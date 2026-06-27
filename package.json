@@ -1,0 +1,24 @@
+{
+  "name": "xcash-bridge-server",
+  "version": "1.0.0",
+  "description": "XCash Klassic Bridge Server",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "xcash",
+    "bridge"
+  ],
+  "author": "XCash Labs",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
+    "mongodb": "^7.4.0"
+  }
+}
