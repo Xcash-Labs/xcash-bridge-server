@@ -9,6 +9,7 @@ import {
   isValidXckAddress,
   normalizeTxHash,
   normalizeEvmAddress,
+  normalizeXckAddress,
   normalizeNetwork
 } from '../utils/validation.js';
 
@@ -16,10 +17,15 @@ const router = express.Router();
 
 router.post('/request', async (req, res) => {
   try {
+    const xck_address = normalizeXckAddress(req.body.xck_address);
     const evm_address = normalizeEvmAddress(req.body.evm_address);
     const network = normalizeNetwork(req.body.network);
     const amount_atomic = String(req.body.amount_atomic || '').trim();
     const direction = String(req.body.direction || '').trim();
+
+    if (!isValidXckAddress(xck_address)) {
+      return res.status(400).json({ ok: false, error: 'Only XCK primary addresses are supported' });
+    }
 
     if (!isValidEvmAddress(evm_address)) {
       return res.status(400).json({ ok: false, error: 'Invalid evm_address' });

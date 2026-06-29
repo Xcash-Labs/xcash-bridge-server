@@ -26,8 +26,8 @@ export function isValidAtomicAmount(amount) {
 export function isValidXckAddress(address) {
   return (
     typeof address === 'string' &&
-    address.length >= 95 &&
-    address.length <= 110
+    address.length === 98 &&
+    address.startsWith('XCA')
   );
 }
 
@@ -37,6 +37,10 @@ export function normalizeTxHash(txHash) {
 
 export function normalizeEvmAddress(address) {
   return String(address).trim().toLowerCase();
+}
+
+export function normalizeXckAddress(address) {
+  return String(address || '').trim();
 }
 
 export function normalizeNetwork(network) {

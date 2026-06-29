@@ -8,6 +8,7 @@ function collection() {
 
 export const BridgeRequest = {
   async create({
+    xck_address,
     evm_address,
     network,
     direction,
@@ -17,7 +18,7 @@ export const BridgeRequest = {
 
     const doc = {
       tx_hash: null,
-      xck_address: null,
+      xck_address,
       evm_address,
       network,
       direction,
