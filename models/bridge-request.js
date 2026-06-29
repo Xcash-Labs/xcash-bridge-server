@@ -36,35 +36,45 @@ export const BridgeRequest = {
 
     return doc;
   },
-async attachTxHash({
-  bridge_id,
-  tx_hash,
-  xck_address
-}) {
-  const now = new Date();
+  async attachTxHash({
+    bridge_id,
+    tx_hash,
+    xck_address
+  }) {
+    const now = new Date();
 
-  const { ObjectId } = await import('mongodb');
+    const { ObjectId } = await import('mongodb');
 
-  return collection().findOneAndUpdate(
-    {
-      _id: new ObjectId(bridge_id),
-      status: 'initiated',
-      tx_hash: null
-    },
-    {
-      $set: {
-        tx_hash,
-        xck_address,
-        status: 'pending',
-        updated_at: now
+    return collection().findOneAndUpdate(
+      {
+        _id: new ObjectId(bridge_id),
+        status: 'initiated',
+        tx_hash: null
+      },
+      {
+        $set: {
+          tx_hash,
+          xck_address,
+          status: 'pending',
+          updated_at: now
+        }
+      },
+      {
+        returnDocument: 'after'
       }
-    },
-    {
-      returnDocument: 'after'
-    }
-  );
-},
-
+    );
+  },
+  async findActiveByXckAddress(xck_address, activeStatuses) {
+    return collection().findOne(
+      {
+        xck_address,
+        status: { $in: activeStatuses }
+      },
+      {
+        sort: { created_at: -1 }
+      }
+    );
+  }
 
 
 

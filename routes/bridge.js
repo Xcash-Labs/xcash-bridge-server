@@ -13,7 +13,45 @@ import {
   normalizeNetwork
 } from '../utils/validation.js';
 
+const ACTIVE_BRIDGE_STATUSES = [
+  'initiated',
+  'deposit_received',
+  'bridging'
+];
+
 const router = express.Router();
+
+router.get('/active', async (req, res) => {
+  try {
+    const xck_address = normalizeXckAddress(req.query.xck_address);
+
+    if (!isValidXckAddress(xck_address)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Only XCK primary addresses are supported'
+      });
+    }
+
+    const request = await BridgeRequest.findActiveByXckAddress(
+      xck_address,
+      ACTIVE_BRIDGE_STATUSES
+    );
+
+    return res.json({
+      ok: true,
+      has_active_request: !!request,
+      request
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      ok: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 
 router.post('/request', async (req, res) => {
   try {
@@ -22,13 +60,6 @@ router.post('/request', async (req, res) => {
     const network = normalizeNetwork(req.body.network);
     const amount_atomic = String(req.body.amount_atomic || '').trim();
     const direction = String(req.body.direction || '').trim();
-
-console.log({
-  xck_address,
-  type: typeof xck_address,
-  length: xck_address?.length,
-  startsWithXCK: xck_address?.startsWith('XCK')
-});
 
     if (!isValidXckAddress(xck_address)) {
       return res.status(400).json({ ok: false, error: 'Only XCK primary addresses are supported' });
@@ -44,6 +75,19 @@ console.log({
 
     if (!isValidAtomicAmount(amount_atomic)) {
       return res.status(400).json({ ok: false, error: 'Invalid amount_atomic' });
+    }
+
+    const activeRequest = await BridgeRequest.findActiveByXckAddress(
+      xck_address,
+      ACTIVE_BRIDGE_STATUSES
+    );
+
+    if (activeRequest) {
+      return res.status(409).json({
+        ok: false,
+        error: 'You already have a bridge request in progress',
+        request: activeRequest
+      });
     }
 
     const request = await BridgeRequest.create({
