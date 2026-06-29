@@ -27,7 +27,7 @@ export function isValidXckAddress(address) {
   return (
     typeof address === 'string' &&
     address.length === 98 &&
-    address.startsWith('XCA')
+    address.startsWith('XCK')
   );
 }
 
