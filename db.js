@@ -24,20 +24,24 @@ export async function connectDB() {
 async function createIndexes() {
   const bridgeRequests = db.collection('bridge_requests');
 
+  // Unique only when tx_hash exists and is a string
   await bridgeRequests.createIndex(
     { tx_hash: 1 },
-    { unique: true }
+    {
+      unique: true,
+      partialFilterExpression: {
+        tx_hash: { $type: "string" }
+      }
+    }
   );
 
-  await bridgeRequests.createIndex({
-    status: 1,
-    created_at: 1
-  });
+  await bridgeRequests.createIndex(
+    { status: 1, created_at: 1 }
+  );
 
-  await bridgeRequests.createIndex({
-    status: 1,
-    locked_until: 1
-  });
+  await bridgeRequests.createIndex(
+    { status: 1, locked_until: 1 }
+  );
 }
 
 export function getDB() {
