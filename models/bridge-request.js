@@ -74,7 +74,7 @@ export const BridgeRequest = {
         sort: { created_at: -1 }
       }
     );
-  }
+  },
 
 
 
