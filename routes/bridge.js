@@ -23,6 +23,13 @@ router.post('/request', async (req, res) => {
     const amount_atomic = String(req.body.amount_atomic || '').trim();
     const direction = String(req.body.direction || '').trim();
 
+console.log({
+  xck_address,
+  type: typeof xck_address,
+  length: xck_address?.length,
+  startsWithXCK: xck_address?.startsWith('XCK')
+});
+
     if (!isValidXckAddress(xck_address)) {
       return res.status(400).json({ ok: false, error: 'Only XCK primary addresses are supported' });
     }
