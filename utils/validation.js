@@ -20,10 +20,7 @@ export function isValidNetwork(network) {
 }
 
 export function isValidAtomicAmount(amount) {
-  return (
-    Number.isSafeInteger(amount) &&
-    amount > 0
-  );
+  return /^[1-9]\d*$/.test(amount);
 }
 
 export function isValidXckAddress(address) {
