@@ -45,3 +45,12 @@ export function normalizeEvmAddress(address) {
 export function normalizeNetwork(network) {
   return String(network).trim().toLowerCase();
 }
+
+const VALID_BRIDGE_DIRECTIONS = new Set([
+  'XCK_TO_WXCK',
+  'WXCK_TO_XCK'
+]);
+
+export function isValidBridgeDirection(direction) {
+  return VALID_BRIDGE_DIRECTIONS.has(direction);
+}

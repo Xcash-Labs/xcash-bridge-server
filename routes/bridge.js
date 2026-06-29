@@ -16,19 +16,10 @@ const router = express.Router();
 
 router.post('/request', async (req, res) => {
   try {
-    const tx_hash = normalizeTxHash(req.body.tx_hash);
     const evm_address = normalizeEvmAddress(req.body.evm_address);
     const network = normalizeNetwork(req.body.network);
-    const xck_address = String(req.body.xck_address || '').trim();
-    const amount_atomic = Number(req.body.amount_atomic);
-
-    if (!isValidTxHash(tx_hash)) {
-      return res.status(400).json({ ok: false, error: 'Invalid tx_hash' });
-    }
-
-    if (!isValidXckAddress(xck_address)) {
-      return res.status(400).json({ ok: false, error: 'Invalid xck_address' });
-    }
+    const amount_atomic = String(req.body.amount_atomic || '').trim();
+    const direction = String(req.body.direction || '').trim();
 
     if (!isValidEvmAddress(evm_address)) {
       return res.status(400).json({ ok: false, error: 'Invalid evm_address' });
@@ -43,17 +34,48 @@ router.post('/request', async (req, res) => {
     }
 
     const request = await BridgeRequest.create({
-      tx_hash,
-      xck_address,
       evm_address,
       network,
-      amount_atomic
+      direction,
+      amount_atomic,
+      status: 'initiated'
     });
 
     return res.json({
       ok: true,
-      status: request.status,
-      tx_hash: request.tx_hash
+      bridge_id: request._id,
+      status: request.status
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: 'Internal server error' });
+  }
+});
+
+router.post('/request/:bridge_id/tx', async (req, res) => {
+  try {
+    const bridge_id = req.params.bridge_id;
+    const tx_hash = normalizeTxHash(req.body.tx_hash);
+    const xck_address = String(req.body.xck_address || '').trim();
+
+    if (!isValidTxHash(tx_hash)) {
+      return res.status(400).json({ ok: false, error: 'Invalid tx_hash' });
+    }
+
+    if (!isValidXckAddress(xck_address)) {
+      return res.status(400).json({ ok: false, error: 'Invalid xck_address' });
+    }
+
+    const request = await BridgeRequest.attachTxHash({
+      bridge_id,
+      tx_hash,
+      xck_address
+    });
+
+    return res.json({
+      ok: true,
+      bridge_id: request._id
     });
 
   } catch (err) {
@@ -65,11 +87,7 @@ router.post('/request', async (req, res) => {
     }
 
     console.error(err);
-
-    return res.status(500).json({
-      ok: false,
-      error: 'Internal server error'
-    });
+    return res.status(500).json({ ok: false, error: 'Internal server error' });
   }
 });
 

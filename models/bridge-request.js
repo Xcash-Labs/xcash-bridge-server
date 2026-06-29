@@ -8,40 +8,69 @@ function collection() {
 
 export const BridgeRequest = {
   async create({
-    tx_hash,
-    xck_address,
     evm_address,
     network,
+    direction,
     amount_atomic
   }) {
     const now = new Date();
 
     const doc = {
-      tx_hash,
-      xck_address,
+      tx_hash: null,
+      xck_address: null,
       evm_address,
       network,
+      direction,
       amount_atomic,
-
-      status: 'pending',
-
-      confirmations: 0,
-      verified: false,
-
+      status: 'initiated',
       evm_tx_hash: null,
       error: null,
-
-      locked_at: null,
-      locked_until: null,
-
       created_at: now,
       updated_at: now
     };
 
-    await collection().insertOne(doc);
+    const result = await collection().insertOne(doc);
+
+    doc._id = result.insertedId;
 
     return doc;
   },
+async attachTxHash({
+  bridge_id,
+  tx_hash,
+  xck_address
+}) {
+  const now = new Date();
+
+  const { ObjectId } = await import('mongodb');
+
+  return collection().findOneAndUpdate(
+    {
+      _id: new ObjectId(bridge_id),
+      status: 'initiated',
+      tx_hash: null
+    },
+    {
+      $set: {
+        tx_hash,
+        xck_address,
+        status: 'pending',
+        updated_at: now
+      }
+    },
+    {
+      returnDocument: 'after'
+    }
+  );
+},
+
+
+
+
+
+
+
+
 
   async findByTxHash(tx_hash) {
     return collection().findOne(
