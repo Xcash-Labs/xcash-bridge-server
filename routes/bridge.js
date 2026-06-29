@@ -40,6 +40,7 @@ router.post('/request', async (req, res) => {
     }
 
     const request = await BridgeRequest.create({
+      xck_address,
       evm_address,
       network,
       direction,
