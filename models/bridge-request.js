@@ -55,7 +55,6 @@ export const BridgeRequest = {
         $set: {
           tx_hash,
           xck_address,
-          status: 'pending',
           updated_at: now
         }
       },
