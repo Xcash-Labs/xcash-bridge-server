@@ -9,6 +9,7 @@ function collection() {
 export const BRIDGE_STATUSES = {
   REQUEST: 'request',
   WAITING: 'waiting',
+  CONFIRMED: 'confirmed',
   COMPLETE: 'complete',
   FAILED: 'failed',
   CANCELLED: 'cancelled'
@@ -135,6 +136,21 @@ export const BridgeRequest = {
       {
         $set: {
           status: BRIDGE_STATUSES.WAITING,
+          error,
+          updated_at: now
+        }
+      }
+    );
+  },
+
+  async markConfirmed(_id, error = null) {
+    const now = new Date();
+
+    return collection().updateOne(
+      { _id },
+      {
+        $set: {
+          status: BRIDGE_STATUSES.CONFIRMED,
           error,
           updated_at: now
         }

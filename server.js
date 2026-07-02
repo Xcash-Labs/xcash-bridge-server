@@ -48,6 +48,8 @@ async function processBridgeRequest(request) {
     return;
   }
 
+  await BridgeRequest.markConfirmed(request._id);
+
   const mint = await mintOnEvm(request);
 
   if (!mint.ok) {
