@@ -6,6 +6,19 @@ function collection() {
   return getDB().collection(COLLECTION);
 }
 
+export const BRIDGE_STATUSES = {
+  REQUEST: 'request',
+  WAITING: 'waiting',
+  COMPLETE: 'complete',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled'
+};
+
+export const ACTIVE_BRIDGE_STATUSES = [
+  BRIDGE_STATUSES.REQUEST,
+  BRIDGE_STATUSES.WAITING
+];
+
 export const BridgeRequest = {
   async create({
     xck_address,
@@ -23,7 +36,7 @@ export const BridgeRequest = {
       network,
       direction,
       amount_atomic,
-      status: 'initiated',
+      status: BRIDGE_STATUSES.REQUEST,
       evm_tx_hash: null,
       error: null,
       created_at: now,
@@ -31,30 +44,30 @@ export const BridgeRequest = {
     };
 
     const result = await collection().insertOne(doc);
-
     doc._id = result.insertedId;
 
     return doc;
   },
+
   async attachTxHash({
     bridge_id,
     tx_hash,
     xck_address
   }) {
     const now = new Date();
-
     const { ObjectId } = await import('mongodb');
 
     return collection().findOneAndUpdate(
       {
         _id: new ObjectId(bridge_id),
-        status: 'initiated',
+        status: BRIDGE_STATUSES.REQUEST,
         tx_hash: null
       },
       {
         $set: {
           tx_hash,
           xck_address,
+          status: BRIDGE_STATUSES.WAITING,
           updated_at: now
         }
       },
@@ -63,7 +76,11 @@ export const BridgeRequest = {
       }
     );
   },
-  async findActiveByXckAddress(xck_address, activeStatuses) {
+
+  async findActiveByXckAddress(
+    xck_address,
+    activeStatuses = ACTIVE_BRIDGE_STATUSES
+  ) {
     return collection().findOne(
       {
         xck_address,
@@ -75,13 +92,6 @@ export const BridgeRequest = {
     );
   },
 
-
-
-
-
-
-
-
   async findByTxHash(tx_hash) {
     return collection().findOne(
       { tx_hash },
@@ -92,10 +102,9 @@ export const BridgeRequest = {
           xck_address: 1,
           evm_address: 1,
           network: 1,
+          direction: 1,
           amount_atomic: 1,
           status: 1,
-          confirmations: 1,
-          verified: 1,
           evm_tx_hash: 1,
           error: 1,
           created_at: 1,
@@ -105,80 +114,44 @@ export const BridgeRequest = {
     );
   },
 
-  async lockNextPending(lockMs = 60000) {
-    const now = new Date();
-    const lockedUntil = new Date(now.getTime() + lockMs);
-
-    return collection().findOneAndUpdate(
+  async findNextReadyRequest(cutoff) {
+    return collection().findOne(
       {
-        status: 'pending',
-        $or: [
-          { locked_until: null },
-          { locked_until: { $lte: now } }
-        ]
+        status: BRIDGE_STATUSES.WAITING,
+        tx_hash: { $ne: null },
+        created_at: { $lte: cutoff }
       },
       {
-        $set: {
-          status: 'verifying',
-          locked_at: now,
-          locked_until: lockedUntil,
-          updated_at: now
-        }
-      },
-      {
-        sort: { created_at: 1 },
-        returnDocument: 'after'
+        sort: { created_at: 1 }
       }
     );
   },
 
-  async markPending(_id, confirmations = 0, error = null) {
+  async markWaiting(_id, error = null) {
     const now = new Date();
 
     return collection().updateOne(
       { _id },
       {
         $set: {
-          status: 'pending',
-          confirmations,
+          status: BRIDGE_STATUSES.WAITING,
           error,
-          locked_at: null,
-          locked_until: null,
           updated_at: now
         }
       }
     );
   },
 
-  async markMinting(_id, confirmations) {
+  async markComplete(_id, evm_tx_hash) {
     const now = new Date();
 
     return collection().updateOne(
       { _id },
       {
         $set: {
-          status: 'minting',
-          confirmations,
-          verified: true,
-          xck_verified_at: now,
-          updated_at: now
-        }
-      }
-    );
-  },
-
-  async markCompleted(_id, evm_tx_hash) {
-    const now = new Date();
-
-    return collection().updateOne(
-      { _id },
-      {
-        $set: {
-          status: 'completed',
+          status: BRIDGE_STATUSES.COMPLETE,
           evm_tx_hash,
           error: null,
-          locked_at: null,
-          locked_until: null,
           updated_at: now
         }
       }
@@ -192,10 +165,23 @@ export const BridgeRequest = {
       { _id },
       {
         $set: {
-          status: 'failed',
+          status: BRIDGE_STATUSES.FAILED,
           error: error || 'Unknown error',
-          locked_at: null,
-          locked_until: null,
+          updated_at: now
+        }
+      }
+    );
+  },
+
+  async markCancelled(_id, error = null) {
+    const now = new Date();
+
+    return collection().updateOne(
+      { _id },
+      {
+        $set: {
+          status: BRIDGE_STATUSES.CANCELLED,
+          error,
           updated_at: now
         }
       }

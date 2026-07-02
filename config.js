@@ -28,14 +28,13 @@ function numberEnv(name, fallback) {
 
 export const config = {
   port: numberEnv('PORT', 3000),
-
   mongoUri: required('MONGO_URI'),
   mongoDb: process.env.MONGO_DB || 'xcash_bridge',
-
   allowedOrigin: process.env.ALLOWED_ORIGIN || '*',
-
   bridgeXckAddress: required('BRIDGE_XCK_ADDRESS'),
-
-  minConfirmations: numberEnv('MIN_CONFIRMATIONS', 10),
-  workerIntervalMs: numberEnv('WORKER_INTERVAL_MS', 5000)
+  workerIntervalMs: numberEnv('WORKER_INTERVAL_MS', 60000),
+  walletRpcHost: process.env.WALLET_RPC_HOST || '127.0.0.1',
+  walletRpcPort: numberEnv('WALLET_RPC_PORT', 18289),
+  bridgeDelayMinutes: numberEnv('BRIDGE_DELAY_MINUTES', 11),
+  requestTimeoutMinutes: numberEnv('BRIDGE_REQUEST_TIMEOUT_MINUTES', 60)
 };

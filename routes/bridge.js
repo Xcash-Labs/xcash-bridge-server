@@ -13,12 +13,6 @@ import {
   normalizeNetwork
 } from '../utils/validation.js';
 
-const ACTIVE_BRIDGE_STATUSES = [
-  'initiated',
-  'deposit_received',
-  'bridging'
-];
-
 const router = express.Router();
 
 router.get('/active', async (req, res) => {
@@ -32,10 +26,7 @@ router.get('/active', async (req, res) => {
       });
     }
 
-    const request = await BridgeRequest.findActiveByXckAddress(
-      xck_address,
-      ACTIVE_BRIDGE_STATUSES
-    );
+    const request = await BridgeRequest.findActiveByXckAddress(xck_address);
 
     return res.json({
       ok: true,
@@ -51,7 +42,6 @@ router.get('/active', async (req, res) => {
     });
   }
 });
-
 
 router.post('/request', async (req, res) => {
   try {
@@ -95,8 +85,7 @@ router.post('/request', async (req, res) => {
       evm_address,
       network,
       direction,
-      amount_atomic,
-      status: 'initiated'
+      amount_atomic
     });
 
     return res.json({

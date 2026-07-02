@@ -19,32 +19,34 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function isExpired(request) {
+  return Date.now() - request.created_at.getTime() >
+    config.requestTimeoutMinutes * 60 * 1000;
+}
+
 async function processBridgeRequest(request) {
   logger.info(`Processing bridge request ${request.tx_hash}`);
 
   const verification = await verifyXckTransaction(request);
 
   if (!verification.ok) {
-    await BridgeRequest.markPending(
-      request._id,
-      verification.confirmations || 0,
-      verification.reason || null
+    const expired = isExpired(request);
+
+    logger.info(
+      `Bridge request ${request.tx_hash} not ready: ${verification.reason || 'unknown reason'}`
     );
+
+    if (verification.permanent || expired) {
+      await BridgeRequest.markFailed(
+        request._id,
+        expired
+          ? `Bridge request expired: ${verification.reason || 'transaction was not verified in time'}`
+          : verification.reason || 'XCK transaction verification failed'
+      );
+    }
 
     return;
   }
-
-  if (verification.confirmations < config.minConfirmations) {
-    await BridgeRequest.markPending(
-      request._id,
-      verification.confirmations,
-      null
-    );
-
-    return;
-  }
-
-  await BridgeRequest.markMinting(request._id, verification.confirmations);
 
   const mint = await mintOnEvm(request);
 
@@ -57,7 +59,7 @@ async function processBridgeRequest(request) {
     return;
   }
 
-  await BridgeRequest.markCompleted(request._id, mint.evm_tx_hash);
+  await BridgeRequest.markComplete(request._id, mint.evm_tx_hash);
 }
 
 async function bridgeWorkerLoop() {
@@ -65,7 +67,8 @@ async function bridgeWorkerLoop() {
 
     while (!shuttingDown) {
         try {
-            const request = await BridgeRequest.lockNextPending();
+            const cutoff = new Date(Date.now() - (config.bridgeDelayMinutes * 60 * 1000));
+            const request = await BridgeRequest.findNextReadyRequest(cutoff);
 
             if (request) {
                 workerBusy = true;
@@ -137,7 +140,10 @@ app.use('/api/bridge', bridgeRoutes);
 async function main() {
   await connectDB();
 
-  bridgeWorkerLoop();
+  bridgeWorkerLoop().catch(err => {
+    logger.error('Bridge worker crashed', err);
+    process.exit(1);
+  });
 
   httpServer = app.listen(config.port, () => {
     logger.info(`XCash bridge server listening on port ${config.port}`);
