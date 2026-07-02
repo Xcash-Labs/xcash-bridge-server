@@ -1,6 +1,8 @@
 import express from 'express';
 
 import { BridgeRequest } from '../models/bridge-request.js';
+import { ACTIVE_BRIDGE_STATUSES } from '../models/bridgeRequest.js';
+
 import {
   isValidTxHash,
   isValidEvmAddress,
