@@ -23,6 +23,7 @@ export async function connectDB() {
 
 async function createIndexes() {
   const bridgeRequests = db.collection('bridge_requests');
+  const bridgeHistory = db.collection('bridge_request_history');
 
   // Unique only when tx_hash exists and is a string
   await bridgeRequests.createIndex(
@@ -42,6 +43,11 @@ async function createIndexes() {
   await bridgeRequests.createIndex(
     { status: 1, locked_until: 1 }
   );
+
+  await bridgeHistory.createIndex({
+    xck_address: 1,
+    created_at: -1
+  });
 }
 
 export function getDB() {

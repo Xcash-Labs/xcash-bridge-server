@@ -1,9 +1,36 @@
 import { getDB } from '../db.js';
 
 const COLLECTION = 'bridge_requests';
+const HISTORY_COLLECTION = 'bridge_request_history';
 
 function collection() {
   return getDB().collection(COLLECTION);
+}
+
+function historyCollection() {
+  return getDB().collection(HISTORY_COLLECTION);
+}
+
+async function archiveRequest(id, finalUpdates = {}) {
+  const now = new Date();
+
+  const request = await collection().findOne({ _id: id });
+
+  if (!request) {
+    return null;
+  }
+
+  const historyDoc = {
+    ...request,
+    ...finalUpdates,
+    archived_at: now
+  };
+
+  await historyCollection().insertOne(historyDoc);
+
+  await collection().deleteOne({ _id: id });
+
+  return historyDoc;
 }
 
 export const BRIDGE_STATUSES = {
@@ -17,7 +44,8 @@ export const BRIDGE_STATUSES = {
 
 export const ACTIVE_BRIDGE_STATUSES = [
   BRIDGE_STATUSES.REQUEST,
-  BRIDGE_STATUSES.WAITING
+  BRIDGE_STATUSES.WAITING,
+  BRIDGE_STATUSES.CONFIRMED
 ];
 
 export const BridgeRequest = {
@@ -158,49 +186,34 @@ export const BridgeRequest = {
     );
   },
 
-  async markComplete(_id, evm_tx_hash) {
+  async markComplete(id, evm_tx_hash) {
     const now = new Date();
 
-    return collection().updateOne(
-      { _id },
-      {
-        $set: {
-          status: BRIDGE_STATUSES.COMPLETE,
-          evm_tx_hash,
-          error: null,
-          updated_at: now
-        }
-      }
-    );
+    return archiveRequest(id, {
+      status: BRIDGE_STATUSES.COMPLETE,
+      evm_tx_hash,
+      error: null,
+      updated_at: now
+    });
   },
 
-  async markFailed(_id, error) {
+  async markFailed(id, error) {
     const now = new Date();
 
-    return collection().updateOne(
-      { _id },
-      {
-        $set: {
-          status: BRIDGE_STATUSES.FAILED,
-          error: error || 'Unknown error',
-          updated_at: now
-        }
-      }
-    );
+    return archiveRequest(id, {
+      status: BRIDGE_STATUSES.FAILED,
+      error,
+      updated_at: now
+    });
   },
 
-  async markCancelled(_id, error = null) {
+  async markCancelled(id, error = 'Bridge request was cancelled') {
     const now = new Date();
 
-    return collection().updateOne(
-      { _id },
-      {
-        $set: {
-          status: BRIDGE_STATUSES.CANCELLED,
-          error,
-          updated_at: now
-        }
-      }
-    );
+    return archiveRequest(id, {
+      status: BRIDGE_STATUSES.CANCELLED,
+      error,
+      updated_at: now
+    });
   }
 };
