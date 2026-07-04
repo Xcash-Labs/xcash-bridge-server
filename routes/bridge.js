@@ -1,6 +1,6 @@
 import express from 'express';
 import { BridgeRequest, ACTIVE_BRIDGE_STATUSES, BRIDGE_STATUSES } from '../models/bridge-request.js';
-import { createEvmClaim } from '../services/evm.js';
+import { createEvmClaim } from '../chains/evm.js';
 import { ObjectId } from 'mongodb';
 import {
   isValidTxHash,
