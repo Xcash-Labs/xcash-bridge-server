@@ -36,5 +36,9 @@ export const config = {
   walletRpcHost: process.env.WALLET_RPC_HOST || '127.0.0.1',
   walletRpcPort: numberEnv('WALLET_RPC_PORT', 18289),
   bridgeDelayMinutes: numberEnv('BRIDGE_DELAY_MINUTES', 11),
-  requestTimeoutMinutes: numberEnv('BRIDGE_REQUEST_TIMEOUT_MINUTES', 60)
+  requestTimeoutMinutes: numberEnv('BRIDGE_REQUEST_TIMEOUT_MINUTES', 60),
+  claimExpirationSeconds: numberEnv('CLAIM_EXPIRATION_SECONDS',604800),
+  bridgePrivateKey: requireEnv('BRIDGE_PRIVATE_KEY'),
+  polygonRpcUrl: requireEnv('POLYGON_RPC_URL'),
+  polygonWxckAddress: requireEnv('POLYGON_WXCK_CONTRACT_ADDRESS')
 };
