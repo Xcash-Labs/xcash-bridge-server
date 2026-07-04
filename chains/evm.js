@@ -1,22 +1,18 @@
 import { ethers } from 'ethers';
 import { config } from '../config.js';
 
-const WXCK_ABI = [
-  'function mint(address to, uint256 amount) external returns (bool)'
-];
-
 function getEvmConfig(network) {
   if (network === 'polygon') {
     return {
-      rpcUrl: config.polygonRpcUrl,
-      contractAddress: config.polygonWxckAddress
+      chainId: 80002,
+      contractAddress: config.polygonWxckContractAddress
     };
   }
 
   if (network === 'base') {
     return {
-      rpcUrl: config.baseRpcUrl,
-      contractAddress: config.baseWxckAddress
+      chainId: config.baseChainId,
+      contractAddress: config.baseWxckContractAddress
     };
   }
 
@@ -25,54 +21,70 @@ function getEvmConfig(network) {
 
 export async function mintOnEvm(request) {
   try {
-    const { rpcUrl, contractAddress } = getEvmConfig(request.network);
-
-    if (!rpcUrl) {
-      throw new Error(`Missing RPC URL for network: ${request.network}`);
-    }
+    const { chainId, contractAddress } = getEvmConfig(request.network);
 
     if (!contractAddress) {
-      throw new Error(`Missing WXCK contract address for network: ${request.network}`);
+      throw new Error(`Missing wXCK contract address for network: ${request.network}`);
     }
 
     if (!config.bridgePrivateKey) {
-      throw new Error('Missing bridge wallet private key');
+      throw new Error('Missing claim signer private key');
     }
 
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const wallet = new ethers.Wallet(config.bridgePrivateKey, provider);
+    const signerWallet = new ethers.Wallet(config.bridgePrivateKey);
 
-    const contract = new ethers.Contract(
-      contractAddress,
-      WXCK_ABI,
-      wallet
+    const bridgeId = ethers.keccak256(
+      ethers.toUtf8Bytes(String(request._id))
     );
 
-    const tx = await contract.mint(
-      request.evm_address,
-      BigInt(request.amount_atomic)
+    const amount = BigInt(request.amount_atomic);
+
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour
+
+    const digest = ethers.keccak256(
+      ethers.AbiCoder.defaultAbiCoder().encode(
+        [
+          'uint256',
+          'address',
+          'bytes32',
+          'address',
+          'uint256',
+          'uint256'
+        ],
+        [
+          chainId,
+          contractAddress,
+          bridgeId,
+          request.evm_address,
+          amount,
+          deadline
+        ]
+      )
     );
 
-    const receipt = await tx.wait();
-
-    if (!receipt || receipt.status !== 1) {
-      return {
-        ok: false,
-        evm_tx_hash: tx.hash,
-        reason: 'EVM mint transaction failed'
-      };
-    }
+    const signature = await signerWallet.signMessage(
+      ethers.getBytes(digest)
+    );
 
     return {
       ok: true,
-      evm_tx_hash: tx.hash,
+      evm_tx_hash: null,
+      claim: {
+        bridgeId,
+        amount: amount.toString(),
+        deadline,
+        signature,
+        contractAddress,
+        chainId
+      },
       reason: null
     };
   } catch (err) {
     return {
       ok: false,
       evm_tx_hash: null,
-      reason: err.message || 'EVM minting failed'
+      claim: null,
+      reason: err.message || 'Claim authorization failed'
     };
   }
 }

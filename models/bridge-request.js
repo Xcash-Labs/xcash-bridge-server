@@ -215,5 +215,51 @@ export const BridgeRequest = {
       error,
       updated_at: now
     });
-  }
+  },
+
+  async findRequestsByXckAddress(xck_address, days = 30) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+
+    const projection = {
+      _id: 0,
+      tx_hash: 1,
+      xck_address: 1,
+      evm_address: 1,
+      network: 1,
+      direction: 1,
+      amount_atomic: 1,
+      status: 1,
+      evm_tx_hash: 1,
+      error: 1,
+      created_at: 1,
+      updated_at: 1,
+      archived_at: 1
+    };
+
+    const activeRequests = await collection()
+      .find(
+        {
+          xck_address,
+          created_at: { $gte: cutoff }
+        },
+        { projection }
+      )
+      .toArray();
+
+    const historyRequests = await historyCollection()
+      .find(
+        {
+          xck_address,
+          created_at: { $gte: cutoff }
+        },
+        { projection }
+      )
+      .toArray();
+
+    return [...activeRequests, ...historyRequests].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+  },
+
 };

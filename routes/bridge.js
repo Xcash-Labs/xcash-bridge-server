@@ -169,4 +169,37 @@ router.get('/status/:tx_hash', async (req, res) => {
   }
 });
 
+router.get('/requests', async (req, res) => {
+  try {
+    const xck_address = normalizeXckAddress(req.query.xck_address);
+
+    if (!isValidXckAddress(xck_address)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Only XCK primary addresses are supported'
+      });
+    }
+
+    const days = Number(req.query.days || 30);
+
+    const requests = await BridgeRequest.findRequestsByXckAddress(
+      xck_address,
+      days
+    );
+
+    return res.json({
+      ok: true,
+      requests
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      ok: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 export default router;
