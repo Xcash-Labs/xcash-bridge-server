@@ -19,16 +19,25 @@ function getEvmConfig(network) {
   throw new Error(`Unsupported EVM network: ${network}`);
 }
 
-export async function mintOnEvm(request) {
+export async function createEvmClaim(request) {
   try {
-    const { chainId, contractAddress } = getEvmConfig(request.network);
+    if (request.direction !== 'XCK_TO_WXCK') {
+      throw new Error(`Claims are only supported for XCK_TO_WXCK requests`);
+    }
+
+    const network = String(request.network || '').toLowerCase();
+    const { chainId, contractAddress } = getEvmConfig(network);
 
     if (!contractAddress) {
-      throw new Error(`Missing wXCK contract address for network: ${request.network}`);
+      throw new Error(`Missing wXCK contract address for network: ${network}`);
     }
 
     if (!config.bridgePrivateKey) {
       throw new Error('Missing claim signer private key');
+    }
+
+    if (!request.evm_address) {
+      throw new Error('Missing EVM claim recipient address');
     }
 
     const signerWallet = new ethers.Wallet(config.bridgePrivateKey);
@@ -38,8 +47,10 @@ export async function mintOnEvm(request) {
     );
 
     const amount = BigInt(request.amount_atomic);
-
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour
+    if (amount <= 0n) {
+      throw new Error('Claim amount must be greater than zero');
+    }
+    const deadline = Math.floor(Date.now() / 1000) + config.claimExpirationSeconds;
 
     const digest = ethers.keccak256(
       ethers.AbiCoder.defaultAbiCoder().encode(
@@ -52,7 +63,7 @@ export async function mintOnEvm(request) {
           'uint256'
         ],
         [
-          chainId,
+          BigInt(chainId),
           contractAddress,
           bridgeId,
           request.evm_address,
@@ -71,8 +82,10 @@ export async function mintOnEvm(request) {
       evm_tx_hash: null,
       claim: {
         bridgeId,
+        recipient: request.evm_address,
         amount: amount.toString(),
         deadline,
+        expires_in: config.claimExpirationSeconds,
         signature,
         contractAddress,
         chainId

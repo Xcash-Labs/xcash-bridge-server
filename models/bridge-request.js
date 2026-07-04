@@ -37,6 +37,7 @@ export const BRIDGE_STATUSES = {
   REQUEST: 'request',
   WAITING: 'waiting',
   CONFIRMED: 'confirmed',
+  READY_TO_CLAIM: 'ready_to_claim',
   COMPLETE: 'complete',
   FAILED: 'failed',
   CANCELLED: 'cancelled'
@@ -45,7 +46,8 @@ export const BRIDGE_STATUSES = {
 export const ACTIVE_BRIDGE_STATUSES = [
   BRIDGE_STATUSES.REQUEST,
   BRIDGE_STATUSES.WAITING,
-  BRIDGE_STATUSES.CONFIRMED
+  BRIDGE_STATUSES.CONFIRMED,
+  BRIDGE_STATUSES.READY_TO_CLAIM
 ];
 
 export const BridgeRequest = {
@@ -186,6 +188,21 @@ export const BridgeRequest = {
     );
   },
 
+  async markReadyToClaim(_id, error = null) {
+    const now = new Date();
+
+    return collection().updateOne(
+      { _id },
+      {
+        $set: {
+          status: BRIDGE_STATUSES.READY_TO_CLAIM,
+          error,
+          updated_at: now
+        }
+      }
+    );
+  },
+
   async markComplete(id, evm_tx_hash) {
     const now = new Date();
 
@@ -260,6 +277,10 @@ export const BridgeRequest = {
     return [...activeRequests, ...historyRequests].sort(
       (a, b) => new Date(b.created_at) - new Date(a.created_at)
     );
+  },
+
+  async findById(_id) {
+    return collection().findOne({ _id });
   },
 
 };

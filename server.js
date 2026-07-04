@@ -9,7 +9,6 @@ import bridgeRoutes from './routes/bridge.js';
 
 import { BridgeRequest } from './models/bridge-request.js';
 import { verifyXckTransaction } from './chains/xck.js';
-import { mintOnEvm } from './chains/evm.js';
 
 let shuttingDown = false;
 let workerBusy = false;
@@ -49,19 +48,7 @@ async function processBridgeRequest(request) {
   }
 
   await BridgeRequest.markConfirmed(request._id);
-
-  const mint = await mintOnEvm(request);
-
-  if (!mint.ok) {
-    await BridgeRequest.markFailed(
-      request._id,
-      mint.reason || 'EVM minting failed'
-    );
-
-    return;
-  }
-
-  await BridgeRequest.markComplete(request._id, mint.evm_tx_hash);
+  await BridgeRequest.markReadyToClaim(request._id);
 }
 
 async function bridgeWorkerLoop() {
