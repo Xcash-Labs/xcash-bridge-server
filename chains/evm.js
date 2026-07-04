@@ -4,7 +4,7 @@ import { config } from '../config.js';
 function getEvmConfig(network) {
   if (network === 'polygon') {
     return {
-      chainId: 80002,
+      chainId: config.polygonChainId,
       contractAddress: config.polygonWxckContractAddress
     };
   }

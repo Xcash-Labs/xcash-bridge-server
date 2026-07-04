@@ -38,7 +38,8 @@ export const config = {
   bridgeDelayMinutes: numberEnv('BRIDGE_DELAY_MINUTES', 11),
   requestTimeoutMinutes: numberEnv('BRIDGE_REQUEST_TIMEOUT_MINUTES', 60),
   claimExpirationSeconds: numberEnv('CLAIM_EXPIRATION_SECONDS',604800),
-  bridgePrivateKey: requireEnv('BRIDGE_PRIVATE_KEY'),
-  polygonRpcUrl: requireEnv('POLYGON_RPC_URL'),
-  polygonWxckAddress: requireEnv('POLYGON_WXCK_CONTRACT_ADDRESS')
+  bridgePrivateKey: required('BRIDGE_PRIVATE_KEY'),
+  polygonChainId: numberEnv('POLYGON_CHAIN_ID', 80002),
+  polygonRpcUrl: required('POLYGON_RPC_URL'),
+  polygonWxckContractAddress: required('POLYGON_WXCK_CONTRACT_ADDRESS')
 };
