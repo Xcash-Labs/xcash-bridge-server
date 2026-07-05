@@ -264,7 +264,7 @@ router.post('/request/:bridge_id/claim', async (req, res) => {
 router.post('/request/:bridge_id/complete', async (req, res) => {
   try {
     const bridge_id = req.params.bridge_id;
-    const evm_tx_hash = normalizeTxHash(req.body.evm_tx_hash);
+    const evm_tx_hash = normalizeEvmTxHash(req.body.evm_tx_hash);
 
     if (!ObjectId.isValid(bridge_id)) {
       return res.status(400).json({
@@ -272,8 +272,6 @@ router.post('/request/:bridge_id/complete', async (req, res) => {
         error: 'Invalid bridge_id'
       });
     }
-
-    const evm_tx_hash = normalizeEvmTxHash(req.body.evm_tx_hash);
 
     if (!isValidEvmTxHash(evm_tx_hash)) {
       return res.status(400).json({
