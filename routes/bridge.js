@@ -11,7 +11,9 @@ import {
   normalizeTxHash,
   normalizeEvmAddress,
   normalizeXckAddress,
-  normalizeNetwork
+  normalizeNetwork,
+  normalizeEvmTxHash,
+  isValidEvmTxHash
 } from '../utils/validation.js';
 
 const router = express.Router();
