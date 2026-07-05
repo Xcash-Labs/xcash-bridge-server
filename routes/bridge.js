@@ -285,19 +285,21 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
   if (!contractAddress) throw new Error(`Missing wXCK contract address for ${network}`);
 
 
-  console.log('verify tx hash:', evm_tx_hash);
+console.log('verify tx hash:', evm_tx_hash);
+console.log('expected contract:', contractAddress);
+console.log('request evm_address:', request.evm_address);
+console.log('request amount_atomic:', request.amount_atomic);
+
+const provider = new ethers.JsonRpcProvider(rpcUrl);
+const receipt = await provider.getTransactionReceipt(evm_tx_hash);
+
 console.log('receipt:', {
   status: receipt?.status,
   to: receipt?.to,
   from: receipt?.from,
   logs: receipt?.logs?.length
 });
-console.log('expected contract:', contractAddress);
-console.log('request evm_address:', request.evm_address);
-console.log('request amount_atomic:', request.amount_atomic);
 
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
-  const receipt = await provider.getTransactionReceipt(evm_tx_hash);
 
   if (!receipt) {
     throw new Error('Claim transaction not found');
@@ -409,14 +411,15 @@ router.post('/request/:bridge_id/complete', async (req, res) => {
     return res.json({
       ok: true,
       status: BRIDGE_STATUSES.COMPLETE,
-      evm_tx_hash
+      evm_tx_hash,
+      claim: verifiedClaim
     });
 
   } catch (err) {
     console.error(err);
     return res.status(500).json({
       ok: false,
-      error: 'Internal server error'
+      error: err.message || 'Internal server error'
     });
   }
 });
