@@ -289,6 +289,8 @@ console.log('verify tx hash:', evm_tx_hash);
 console.log('expected contract:', contractAddress);
 console.log('request evm_address:', request.evm_address);
 console.log('request amount_atomic:', request.amount_atomic);
+console.log('rpcUrl:', rpcUrl);
+console.log('configured chain id:', config.polygonChainId);
 
 const provider = new ethers.JsonRpcProvider(rpcUrl);
 const receipt = await provider.getTransactionReceipt(evm_tx_hash);
