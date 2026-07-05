@@ -284,6 +284,18 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
   if (!rpcUrl) throw new Error(`Missing RPC URL for ${network}`);
   if (!contractAddress) throw new Error(`Missing wXCK contract address for ${network}`);
 
+
+  console.log('verify tx hash:', evm_tx_hash);
+console.log('receipt:', {
+  status: receipt?.status,
+  to: receipt?.to,
+  from: receipt?.from,
+  logs: receipt?.logs?.length
+});
+console.log('expected contract:', contractAddress);
+console.log('request evm_address:', request.evm_address);
+console.log('request amount_atomic:', request.amount_atomic);
+
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const receipt = await provider.getTransactionReceipt(evm_tx_hash);
 
@@ -305,22 +317,32 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
 
   let claimEvent = null;
 
-  for (const log of receipt.logs) {
-    if (log.address.toLowerCase() !== contractAddress.toLowerCase()) {
-      continue;
-    }
+console.log('Receipt logs:', receipt.logs.length);
+console.log('Expected contract:', contractAddress);
+  
+for (const log of receipt.logs) {
+  console.log('Checking log address:', log.address);
 
-    try {
-      const parsed = iface.parseLog(log);
-
-      if (parsed && parsed.name === 'BridgeClaimed') {
-        claimEvent = parsed.args;
-        break;
-      }
-    } catch {
-      // Ignore non-matching logs
-    }
+  if (log.address.toLowerCase() !== contractAddress.toLowerCase()) {
+    console.log('Skipping log (different contract)');
+    continue;
   }
+
+  try {
+    const parsed = iface.parseLog(log);
+
+    console.log('Parsed event:', parsed.name);
+    console.log('Parsed args:', parsed.args);
+
+    if (parsed.name === 'BridgeClaimed') {
+      console.log('Found BridgeClaimed event');
+      claimEvent = parsed.args;
+      break;
+    }
+  } catch (err) {
+    console.log('Not a BridgeClaimed event:', err.message);
+  }
+}
 
   if (!claimEvent) {
     throw new Error('BridgeClaimed event not found');
