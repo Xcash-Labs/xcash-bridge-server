@@ -2,6 +2,8 @@ import express from 'express';
 import { BridgeRequest, ACTIVE_BRIDGE_STATUSES, BRIDGE_STATUSES } from '../models/bridge-request.js';
 import { createEvmClaim } from '../chains/evm.js';
 import { ObjectId } from 'mongodb';
+import { ethers } from 'ethers';
+import { config } from '../config.js';
 import {
   isValidTxHash,
   isValidEvmAddress,
@@ -263,6 +265,86 @@ router.post('/request/:bridge_id/claim', async (req, res) => {
   }
 });
 
+async function verifyClaimTransaction(request, evm_tx_hash) {
+  const network = String(request.network || '').toLowerCase();
+
+  let rpcUrl;
+  let contractAddress;
+
+  if (network === 'polygon') {
+    rpcUrl = config.polygonRpcUrl;
+    contractAddress = config.polygonWxckContractAddress;
+  } else if (network === 'base') {
+    rpcUrl = config.baseRpcUrl;
+    contractAddress = config.baseWxckContractAddress;
+  } else {
+    throw new Error('Unsupported EVM network');
+  }
+
+  if (!rpcUrl) throw new Error(`Missing RPC URL for ${network}`);
+  if (!contractAddress) throw new Error(`Missing wXCK contract address for ${network}`);
+
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const receipt = await provider.getTransactionReceipt(evm_tx_hash);
+
+  if (!receipt) {
+    throw new Error('Claim transaction not found');
+  }
+
+  if (receipt.status !== 1) {
+    throw new Error('Claim transaction failed');
+  }
+
+  if (!receipt.to || receipt.to.toLowerCase() !== contractAddress.toLowerCase()) {
+    throw new Error('Transaction was not sent to the wXCK contract');
+  }
+
+  const iface = new ethers.Interface([
+    'event BridgeClaimed(bytes32 indexed bridgeId, address indexed recipient, uint256 amount, uint256 deadline)'
+  ]);
+
+  let claimEvent = null;
+
+  for (const log of receipt.logs) {
+    if (log.address.toLowerCase() !== contractAddress.toLowerCase()) {
+      continue;
+    }
+
+    try {
+      const parsed = iface.parseLog(log);
+
+      if (parsed && parsed.name === 'BridgeClaimed') {
+        claimEvent = parsed.args;
+        break;
+      }
+    } catch {
+      // Ignore non-matching logs
+    }
+  }
+
+  if (!claimEvent) {
+    throw new Error('BridgeClaimed event not found');
+  }
+
+  if (
+    claimEvent.recipient.toLowerCase() !==
+    request.evm_address.toLowerCase()
+  ) {
+    throw new Error('Claim recipient does not match bridge request');
+  }
+
+  if (claimEvent.amount.toString() !== String(request.amount_atomic)) {
+    throw new Error('Claim amount does not match bridge request');
+  }
+
+  return {
+    bridgeId: claimEvent.bridgeId,
+    recipient: claimEvent.recipient,
+    amount: claimEvent.amount.toString(),
+    deadline: claimEvent.deadline.toString()
+  };
+}
+
 router.post('/request/:bridge_id/complete', async (req, res) => {
   try {
     const bridge_id = req.params.bridge_id;
@@ -297,6 +379,8 @@ router.post('/request/:bridge_id/complete', async (req, res) => {
         error: 'Bridge request is not ready to complete'
       });
     }
+
+    const verifiedClaim = await verifyClaimTransaction(request, evm_tx_hash);
 
     await BridgeRequest.markComplete(request._id, evm_tx_hash);
 
