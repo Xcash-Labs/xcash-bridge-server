@@ -82,7 +82,6 @@ export async function createEvmClaim(request) {
       evm_tx_hash: null,
       claim: {
         bridgeId,
-        recipient: request.evm_address,
         amount: amount.toString(),
         deadline,
         expires_in: config.claimExpirationSeconds,
