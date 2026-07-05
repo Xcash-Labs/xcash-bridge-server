@@ -47,6 +47,17 @@ export function normalizeNetwork(network) {
   return String(network).trim().toLowerCase();
 }
 
+export function isValidEvmTxHash(txHash) {
+  return (
+    typeof txHash === 'string' &&
+    /^0x[a-fA-F0-9]{64}$/.test(txHash)
+  );
+}
+
+export function normalizeEvmTxHash(txHash) {
+  return String(txHash || '').trim().toLowerCase();
+}
+
 const VALID_BRIDGE_DIRECTIONS = new Set([
   'XCK_TO_WXCK',
   'WXCK_TO_XCK'

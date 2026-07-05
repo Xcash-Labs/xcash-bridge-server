@@ -273,7 +273,9 @@ router.post('/request/:bridge_id/complete', async (req, res) => {
       });
     }
 
-    if (!isValidTxHash(evm_tx_hash)) {
+    const evm_tx_hash = normalizeEvmTxHash(req.body.evm_tx_hash);
+
+    if (!isValidEvmTxHash(evm_tx_hash)) {
       return res.status(400).json({
         ok: false,
         error: 'Invalid evm_tx_hash'
