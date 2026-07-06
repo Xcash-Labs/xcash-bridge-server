@@ -85,6 +85,14 @@ export async function createEvmClaim(request) {
 
     const signature = await signerWallet.signMessage(ethers.getBytes(digest));
 
+console.log('Claim signature check:', {
+  signerWallet: signerWallet.address,
+  recovered,
+  matches: recovered.toLowerCase() === signerWallet.address.toLowerCase(),
+  digest,
+  signature
+});
+
     return {
       ok: true,
       evm_tx_hash: null,
