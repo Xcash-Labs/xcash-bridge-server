@@ -52,17 +52,6 @@ export async function createEvmClaim(request) {
     }
     const deadline = Math.floor(Date.now() / 1000) + config.claimExpirationSeconds;
 
-    console.log('Creating EVM claim with fields:', {
-      chainId: BigInt(chainId).toString(),
-      contractAddress,
-      bridgeId,
-      recipient: request.evm_address,
-      amount: amount.toString(),
-      deadline,
-      now: Math.floor(Date.now() / 1000),
-      signerAddress: signerWallet.address
-    });
-
     const chainIdBN = BigInt(chainId);
     const contract = ethers.getAddress(contractAddress);
     const recipient = ethers.getAddress(request.evm_address);
@@ -84,16 +73,6 @@ export async function createEvmClaim(request) {
     );
 
     const signature = await signerWallet.signMessage(ethers.getBytes(digest));
-
-const recovered = ethers.verifyMessage(ethers.getBytes(digest), signature);
-
-console.log('Claim signature check:', {
-  signerWallet: signerWallet.address,
-  recovered,
-  matches: recovered.toLowerCase() === signerWallet.address.toLowerCase(),
-  digest,
-  signature
-});
 
     return {
       ok: true,

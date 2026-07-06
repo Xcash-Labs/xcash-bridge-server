@@ -174,7 +174,6 @@ router.get('/status/:tx_hash', async (req, res) => {
 
   } catch (err) {
     console.error(err);
-
     return res.status(500).json({
       ok: false,
       error: 'Internal server error'
@@ -207,7 +206,6 @@ router.get('/requests', async (req, res) => {
 
   } catch (err) {
     console.error(err);
-
     return res.status(500).json({
       ok: false,
       error: 'Internal server error'
@@ -284,24 +282,8 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
   if (!rpcUrl) throw new Error(`Missing RPC URL for ${network}`);
   if (!contractAddress) throw new Error(`Missing wXCK contract address for ${network}`);
 
-
-console.log('verify tx hash:', evm_tx_hash);
-console.log('expected contract:', contractAddress);
-console.log('request evm_address:', request.evm_address);
-console.log('request amount_atomic:', request.amount_atomic);
-console.log('rpcUrl:', rpcUrl);
-console.log('configured chain id:', config.polygonChainId);
-
 const provider = new ethers.JsonRpcProvider(rpcUrl);
 const receipt = await provider.getTransactionReceipt(evm_tx_hash);
-
-console.log('receipt:', {
-  status: receipt?.status,
-  to: receipt?.to,
-  from: receipt?.from,
-  logs: receipt?.logs?.length
-});
-
 
   if (!receipt) {
     throw new Error('Claim transaction not found');
@@ -320,26 +302,16 @@ console.log('receipt:', {
   ]);
 
   let claimEvent = null;
-
-console.log('Receipt logs:', receipt.logs.length);
-console.log('Expected contract:', contractAddress);
   
 for (const log of receipt.logs) {
-  console.log('Checking log address:', log.address);
-
   if (log.address.toLowerCase() !== contractAddress.toLowerCase()) {
-    console.log('Skipping log (different contract)');
     continue;
   }
 
   try {
     const parsed = iface.parseLog(log);
 
-    console.log('Parsed event:', parsed.name);
-    console.log('Parsed args:', parsed.args);
-
     if (parsed.name === 'BridgeClaimed') {
-      console.log('Found BridgeClaimed event');
       claimEvent = parsed.args;
       break;
     }
