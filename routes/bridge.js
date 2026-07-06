@@ -244,17 +244,6 @@ router.post('/request/:bridge_id/claim', async (req, res) => {
 
     const result = await createEvmClaim(request);
 
-console.log({
-  chainId,
-  contractAddress,
-  signerAddress: signerWallet.address,
-  recipient: request.evm_address,
-  amount: amount.toString(),
-  bridgeId,
-  deadline,
-  now: Math.floor(Date.now() / 1000)
-});
-
     if (!result.ok) {
       return res.status(500).json({
         ok: false,
