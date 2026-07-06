@@ -1,7 +1,7 @@
 import { getDB } from '../db.js';
 
 const COLLECTION = 'bridge_requests';
-const HISTORY_COLLECTION = 'bridge_request_history';
+const HISTORY_COLLECTION = 'bridge_requests_history';
 
 function collection() {
   return getDB().collection(COLLECTION);

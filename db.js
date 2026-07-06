@@ -23,7 +23,7 @@ export async function connectDB() {
 
 async function createIndexes() {
   const bridgeRequests = db.collection('bridge_requests');
-  const bridgeHistory = db.collection('bridge_request_history');
+  const bridgeHistory = db.collection('bridge_requests_history');
 
   // Unique only when tx_hash exists and is a string
   await bridgeRequests.createIndex(
