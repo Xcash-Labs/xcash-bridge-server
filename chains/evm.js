@@ -52,6 +52,17 @@ export async function createEvmClaim(request) {
     }
     const deadline = Math.floor(Date.now() / 1000) + config.claimExpirationSeconds;
 
+console.log('Creating EVM claim with fields:', {
+  chainId: BigInt(chainId).toString(),
+  contractAddress,
+  bridgeId,
+  recipient: request.evm_address,
+  amount: amount.toString(),
+  deadline,
+  now: Math.floor(Date.now() / 1000),
+  signerAddress: signerWallet.address
+});
+
     const digest = ethers.keccak256(
       ethers.AbiCoder.defaultAbiCoder().encode(
         [
