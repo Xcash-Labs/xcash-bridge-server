@@ -84,7 +84,6 @@ export async function createEvmClaim(request) {
     );
 
     const signature = await signerWallet.signMessage(ethers.getBytes(digest));
-    const contract = ethers.getAddress(contractAddress);
 
     return {
       ok: true,
