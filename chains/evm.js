@@ -85,6 +85,8 @@ export async function createEvmClaim(request) {
 
     const signature = await signerWallet.signMessage(ethers.getBytes(digest));
 
+const recovered = ethers.verifyMessage(ethers.getBytes(digest), signature);
+
 console.log('Claim signature check:', {
   signerWallet: signerWallet.address,
   recovered,
