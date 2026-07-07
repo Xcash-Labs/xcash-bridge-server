@@ -108,7 +108,7 @@ router.post('/request', async (req, res) => {
 router.post('/request/:bridge_id/tx', async (req, res) => {
   try {
     const bridge_id = req.params.bridge_id;
-    const tx_hash = normalizeTxHash(req.body.tx_hash);
+    const raw_tx_hash = String(req.body.tx_hash || '').trim();
     const xck_address = String(req.body.xck_address || '').trim();
 
     if (!ObjectId.isValid(bridge_id)) {
@@ -118,12 +118,44 @@ router.post('/request/:bridge_id/tx', async (req, res) => {
       });
     }
 
-    if (!isValidTxHash(tx_hash)) {
-      return res.status(400).json({ ok: false, error: 'Invalid tx_hash' });
+    if (!isValidXckAddress(xck_address)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Invalid xck_address'
+      });
     }
 
-    if (!isValidXckAddress(xck_address)) {
-      return res.status(400).json({ ok: false, error: 'Invalid xck_address' });
+    const existingRequest = await BridgeRequest.findById(
+      new ObjectId(bridge_id)
+    );
+
+    if (!existingRequest) {
+      return res.status(404).json({
+        ok: false,
+        error: 'Bridge request not found'
+      });
+    }
+
+    let tx_hash;
+
+    if (existingRequest.direction === 'WXCK_TO_XCK') {
+      tx_hash = normalizeEvmTxHash(raw_tx_hash);
+
+      if (!isValidEvmTxHash(tx_hash)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Invalid EVM tx_hash'
+        });
+      }
+    } else {
+      tx_hash = normalizeTxHash(raw_tx_hash);
+
+      if (!isValidTxHash(tx_hash)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Invalid XCK tx_hash'
+        });
+      }
     }
 
     const request = await BridgeRequest.attachTxHash({
@@ -146,7 +178,10 @@ router.post('/request/:bridge_id/tx', async (req, res) => {
     }
 
     console.error(err);
-    return res.status(500).json({ ok: false, error: 'Internal server error' });
+    return res.status(500).json({
+      ok: false,
+      error: err.message || 'Internal server error'
+    });
   }
 });
 
