@@ -177,8 +177,17 @@ export const BridgeRequest = {
     return collection().findOne(
       {
         status: BRIDGE_STATUSES.WAITING,
-        tx_hash: { $ne: null },
-        created_at: { $lte: cutoff }
+        created_at: { $lte: cutoff },
+        $or: [
+          {
+            direction: BRIDGE_DIRECTIONS.XCK_TO_WXCK,
+            tx_hash: { $ne: null }
+          },
+          {
+            direction: BRIDGE_DIRECTIONS.WXCK_TO_XCK,
+            evm_tx_hash: { $ne: null }
+          }
+        ]
       },
       {
         sort: { created_at: 1 }
