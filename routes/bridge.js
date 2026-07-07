@@ -282,8 +282,8 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
   if (!rpcUrl) throw new Error(`Missing RPC URL for ${network}`);
   if (!contractAddress) throw new Error(`Missing wXCK contract address for ${network}`);
 
-const provider = new ethers.JsonRpcProvider(rpcUrl);
-const receipt = await provider.getTransactionReceipt(evm_tx_hash);
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const receipt = await provider.getTransactionReceipt(evm_tx_hash);
 
   if (!receipt) {
     throw new Error('Claim transaction not found');
@@ -302,23 +302,23 @@ const receipt = await provider.getTransactionReceipt(evm_tx_hash);
   ]);
 
   let claimEvent = null;
-  
-for (const log of receipt.logs) {
-  if (log.address.toLowerCase() !== contractAddress.toLowerCase()) {
-    continue;
-  }
 
-  try {
-    const parsed = iface.parseLog(log);
-
-    if (parsed.name === 'BridgeClaimed') {
-      claimEvent = parsed.args;
-      break;
+  for (const log of receipt.logs) {
+    if (log.address.toLowerCase() !== contractAddress.toLowerCase()) {
+      continue;
     }
-  } catch (err) {
-    console.log('Not a BridgeClaimed event:', err.message);
+
+    try {
+      const parsed = iface.parseLog(log);
+
+      if (parsed.name === 'BridgeClaimed') {
+        claimEvent = parsed.args;
+        break;
+      }
+    } catch (err) {
+      console.log('Not a BridgeClaimed event:', err.message);
+    }
   }
-}
 
   if (!claimEvent) {
     throw new Error('BridgeClaimed event not found');
@@ -387,6 +387,72 @@ router.post('/request/:bridge_id/complete', async (req, res) => {
       status: BRIDGE_STATUSES.COMPLETE,
       evm_tx_hash,
       claim: verifiedClaim
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      ok: false,
+      error: err.message || 'Internal server error'
+    });
+  }
+});
+
+router.post('/request/:bridge_id/cancel', async (req, res) => {
+  try {
+    const bridge_id = req.params.bridge_id;
+
+    if (!ObjectId.isValid(bridge_id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid bridge_id' });
+    }
+
+    const request = await BridgeRequest.findById(new ObjectId(bridge_id));
+
+    if (!request) {
+      return res.status(404).json({ ok: false, error: 'Bridge request not found' });
+    }
+
+    await BridgeRequest.markCancelled(
+      request._id,
+      req.body.error || 'Bridge request was cancelled'
+    );
+
+    return res.json({
+      ok: true,
+      status: BRIDGE_STATUSES.CANCELLED
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      ok: false,
+      error: err.message || 'Internal server error'
+    });
+  }
+});
+
+router.post('/request/:bridge_id/failed', async (req, res) => {
+  try {
+    const bridge_id = req.params.bridge_id;
+
+    if (!ObjectId.isValid(bridge_id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid bridge_id' });
+    }
+
+    const request = await BridgeRequest.findById(new ObjectId(bridge_id));
+
+    if (!request) {
+      return res.status(404).json({ ok: false, error: 'Bridge request not found' });
+    }
+
+    await BridgeRequest.markFailed(
+      request._id,
+      req.body.error || 'Bridge request failed'
+    );
+
+    return res.json({
+      ok: true,
+      status: BRIDGE_STATUSES.FAILED
     });
 
   } catch (err) {
