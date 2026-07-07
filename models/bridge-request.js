@@ -177,7 +177,7 @@ export const BridgeRequest = {
     return collection().findOne(
       {
         status: BRIDGE_STATUSES.WAITING,
-        updated_at: { $lte: cutoff },
+        created_at: { $lte: cutoff },
         $or: [
           {
             direction: 'XCK_TO_WXCK',
@@ -190,7 +190,7 @@ export const BridgeRequest = {
         ]
       },
       {
-        sort: { updated_at: 1 }
+        sort: { created_at: 1 }
       }
     );
   },
