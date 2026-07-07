@@ -137,6 +137,7 @@ router.post('/request/:bridge_id/tx', async (req, res) => {
     }
 
     let tx_hash;
+    let request;
 
     if (existingRequest.direction === 'WXCK_TO_XCK') {
       tx_hash = normalizeEvmTxHash(raw_tx_hash);
@@ -147,6 +148,13 @@ router.post('/request/:bridge_id/tx', async (req, res) => {
           error: 'Invalid EVM tx_hash'
         });
       }
+
+      request = await BridgeRequest.attachEvmTxHash({
+        bridge_id,
+        evm_tx_hash: tx_hash,
+        xck_address
+      });
+
     } else {
       tx_hash = normalizeTxHash(raw_tx_hash);
 
@@ -156,13 +164,13 @@ router.post('/request/:bridge_id/tx', async (req, res) => {
           error: 'Invalid XCK tx_hash'
         });
       }
-    }
 
-    const request = await BridgeRequest.attachTxHash({
-      bridge_id,
-      tx_hash,
-      xck_address
-    });
+      request = await BridgeRequest.attachTxHash({
+        bridge_id,
+        tx_hash,
+        xck_address
+      });
+    }
 
     return res.json({
       ok: true,

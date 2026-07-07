@@ -108,6 +108,34 @@ export const BridgeRequest = {
     );
   },
 
+  async attachEvmTxHash({
+    bridge_id,
+    evm_tx_hash,
+    xck_address
+  }) {
+    const now = new Date();
+    const { ObjectId } = await import('mongodb');
+
+    return collection().findOneAndUpdate(
+      {
+        _id: new ObjectId(bridge_id),
+        status: BRIDGE_STATUSES.REQUEST,
+        evm_tx_hash: null
+      },
+      {
+        $set: {
+          evm_tx_hash,
+          xck_address,
+          status: BRIDGE_STATUSES.WAITING,
+          updated_at: now
+        }
+      },
+      {
+        returnDocument: 'after'
+      }
+    );
+  },
+
   async findActiveByXckAddress(
     xck_address,
     activeStatuses = ACTIVE_BRIDGE_STATUSES
