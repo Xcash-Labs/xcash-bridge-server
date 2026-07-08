@@ -347,12 +347,16 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
   let claimEvent = null;
 
   for (const log of receipt.logs) {
-    if (log.address.toLowerCase() !== contractAddress.toLowerCase()) {
+    if (!log.address || log.address.toLowerCase() !== contractAddress.toLowerCase()) {
       continue;
     }
 
     try {
       const parsed = iface.parseLog(log);
+
+      if (!parsed) {
+        continue;
+      }
 
       if (parsed.name === 'BridgeClaimed') {
         claimEvent = parsed.args;
