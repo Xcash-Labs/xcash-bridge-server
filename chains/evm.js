@@ -5,13 +5,15 @@ function getEvmConfig(network) {
   if (network === 'polygon') {
     return {
       chainId: config.polygonChainId,
-      contractAddress: config.polygonWxckContractAddress
+      rpcUrl: config.polygonRpcUrl,
+      contractAddress: config.polygonWxckContractAddress,
     };
   }
 
   if (network === 'base') {
     return {
       chainId: config.baseChainId,
+      rpcUrl: config.baseRpcUrl,
       contractAddress: config.baseWxckContractAddress
     };
   }
@@ -108,6 +110,10 @@ export async function verifyBurnTransaction(request) {
     };
   }
 
+  const evm = getEvmConfig(request.network);
+  const provider = new ethers.JsonRpcProvider(evm.rpcUrl);
+  const wxckContractAddress = evm.contractAddress.toLowerCase();
+
   let receipt;
 
   try {
@@ -132,11 +138,9 @@ export async function verifyBurnTransaction(request) {
     return {
       ok: false,
       permanent: true,
-      reason: 'Burn transaction failed on Polygon'
+      reason: `Burn transaction failed on ${request.network}`
     };
   }
-
-  const wxckContractAddress = config.wxckContractAddress.toLowerCase();
 
   if (!receipt.to || receipt.to.toLowerCase() !== wxckContractAddress) {
     return {
@@ -161,7 +165,7 @@ export async function verifyBurnTransaction(request) {
         break;
       }
     } catch {
-      // Not one of our contract logs.
+      // Ignore logs that are not from this interface.
     }
   }
 
