@@ -104,8 +104,18 @@ async function bridgeWorkerLoop() {
 
   while (!shuttingDown) {
     try {
-      const cutoff = new Date(Date.now() - (config.bridgeDelayMinutes * 60 * 1000));
-      const request = await BridgeRequest.findNextReadyRequest(cutoff);
+      const xckToWxckCutoff = new Date(
+        Date.now() - config.xckToWxckDelayMinutes * 60 * 1000
+      );
+
+      const wxckToXckCutoff = new Date(
+        Date.now() - config.wxckToXckDelayMinutes * 60 * 1000
+      );
+
+      const request = await BridgeRequest.findNextReadyRequest({
+        xckToWxckCutoff,
+        wxckToXckCutoff
+      });
 
       if (request) {
         workerBusy = true;

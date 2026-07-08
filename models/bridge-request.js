@@ -173,19 +173,20 @@ export const BridgeRequest = {
     );
   },
 
-  async findNextReadyRequest(cutoff) {
+  async findNextReadyRequest({ xckToWxckCutoff, wxckToXckCutoff }) {
     return collection().findOne(
       {
         status: BRIDGE_STATUSES.WAITING,
-        updated_at: { $lte: cutoff },
         $or: [
           {
             direction: 'XCK_TO_WXCK',
-            tx_hash: { $ne: null }
+            tx_hash: { $ne: null },
+            updated_at: { $lte: xckToWxckCutoff }
           },
           {
             direction: 'WXCK_TO_XCK',
-            evm_tx_hash: { $ne: null }
+            evm_tx_hash: { $ne: null },
+            updated_at: { $lte: wxckToXckCutoff }
           }
         ]
       },
