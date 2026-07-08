@@ -186,7 +186,9 @@ export async function verifyBurnTransaction(request) {
   const amount = burnedEvent.args.amount.toString();
   const xckAddress = burnedEvent.args.xckAddress;
 
-  const expectedBridgeId = `0x${request._id.toString()}`;
+  const expectedBridgeId = ethers.keccak256(
+    ethers.toUtf8Bytes(request._id.toString())
+  );
 
   if (bridgeId.toLowerCase() !== expectedBridgeId.toLowerCase()) {
     return {
