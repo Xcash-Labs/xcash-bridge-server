@@ -76,10 +76,12 @@ async function processWxckToXck(request) {
 
   await BridgeRequest.markConfirmed(request._id);
 
-  // Next:
-  // send native XCK to request.xck_address
-  // save native XCK tx_hash
-  // mark completed
+  const payout = await sendXckFromBridgeWallet({
+    address: request.xck_address,
+    amount_atomic: request.amount_atomic
+  });
+
+  await BridgeRequest.markComplete(request._id, payout.tx_hash);
 }
 
 async function processBridgeRequest(request) {

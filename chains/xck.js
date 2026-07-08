@@ -101,3 +101,34 @@ export async function verifyXckTransaction(request) {
     };
   }
 }
+
+export async function sendXckFromBridgeWallet({
+  address,
+  amount_atomic
+}) {
+  const result = await walletRpc('transfer_split', {
+    destinations: [
+      {
+        address,
+        amount: Number(amount_atomic)
+      }
+    ],
+    account_index: 0,
+    subaddr_indices: [],
+    priority: 0,
+    tx_privacy_settings: 'private',
+    unlock_time: 0,
+    get_tx_key: true,
+    do_not_relay: false,
+    get_tx_hex: false,
+    get_tx_metadata: false
+  });
+
+  return {
+    tx_hash: Array.isArray(result.tx_hash_list)
+      ? result.tx_hash_list[0]
+      : result.tx_hash,
+    tx_hash_list: result.tx_hash_list || [],
+    tx_key_list: result.tx_key_list || []
+  };
+}
