@@ -1,6 +1,10 @@
 import { ethers } from 'ethers';
 import { config } from '../config.js';
 
+const wxckInterface = new ethers.Interface([
+  'event BridgeBurned(bytes32 indexed bridgeId, address indexed sender, uint256 amount, string xckAddress)'
+]);
+
 function getEvmConfig(network) {
   if (network === 'polygon') {
     return {
@@ -177,9 +181,20 @@ export async function verifyBurnTransaction(request) {
     };
   }
 
-  const burner = burnedEvent.args[0].toLowerCase();
-  const amount = burnedEvent.args[1].toString();
-  const xckAddress = burnedEvent.args[2];
+  const bridgeId = burnedEvent.args.bridgeId;
+  const burner = burnedEvent.args.sender.toLowerCase();
+  const amount = burnedEvent.args.amount.toString();
+  const xckAddress = burnedEvent.args.xckAddress;
+
+  const expectedBridgeId = `0x${request._id.toString()}`;
+
+  if (bridgeId.toLowerCase() !== expectedBridgeId.toLowerCase()) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'Burn bridgeId does not match bridge request'
+    };
+  }
 
   if (burner !== request.evm_address.toLowerCase()) {
     return {
