@@ -98,3 +98,112 @@ export async function createEvmClaim(request) {
     };
   }
 }
+
+export async function verifyBurnTransaction(request) {
+  if (!request.evm_tx_hash) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'Missing EVM transaction hash'
+    };
+  }
+
+  let receipt;
+
+  try {
+    receipt = await provider.getTransactionReceipt(request.evm_tx_hash);
+  } catch (err) {
+    return {
+      ok: false,
+      permanent: false,
+      reason: `Unable to fetch burn transaction receipt: ${err.message}`
+    };
+  }
+
+  if (!receipt) {
+    return {
+      ok: false,
+      permanent: false,
+      reason: 'Burn transaction receipt not found yet'
+    };
+  }
+
+  if (receipt.status !== 1) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'Burn transaction failed on Polygon'
+    };
+  }
+
+  const wxckContractAddress = config.wxckContractAddress.toLowerCase();
+
+  if (!receipt.to || receipt.to.toLowerCase() !== wxckContractAddress) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'Burn transaction was not sent to the wXCK contract'
+    };
+  }
+
+  let burnedEvent = null;
+
+  for (const log of receipt.logs) {
+    if (!log.address || log.address.toLowerCase() !== wxckContractAddress) {
+      continue;
+    }
+
+    try {
+      const parsed = wxckInterface.parseLog(log);
+
+      if (parsed.name === 'BridgeBurned') {
+        burnedEvent = parsed;
+        break;
+      }
+    } catch {
+      // Not one of our contract logs.
+    }
+  }
+
+  if (!burnedEvent) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'BridgeBurned event not found'
+    };
+  }
+
+  const burner = burnedEvent.args[0].toLowerCase();
+  const amount = burnedEvent.args[1].toString();
+  const xckAddress = burnedEvent.args[2];
+
+  if (burner !== request.evm_address.toLowerCase()) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'Burn sender does not match bridge request'
+    };
+  }
+
+  if (amount !== request.amount_atomic.toString()) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'Burn amount does not match bridge request'
+    };
+  }
+
+  if (xckAddress !== request.xck_address) {
+    return {
+      ok: false,
+      permanent: true,
+      reason: 'Burn XCK address does not match bridge request'
+    };
+  }
+
+  return {
+    ok: true,
+    permanent: false,
+    reason: null
+  };
+}

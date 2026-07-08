@@ -9,6 +9,7 @@ import bridgeRoutes from './routes/bridge.js';
 
 import { BridgeRequest } from './models/bridge-request.js';
 import { verifyXckTransaction } from './chains/xck.js';
+import { verifyBurnTransaction } from './chains/evm.js';
 
 let shuttingDown = false;
 let workerBusy = false;
@@ -23,9 +24,7 @@ function isExpired(request) {
     config.requestTimeoutMinutes * 60 * 1000;
 }
 
-async function processBridgeRequest(request) {
-  logger.info(`Processing bridge request ${request.tx_hash}`);
-
+async function processXckToWxck(request) {
   const verification = await verifyXckTransaction(request);
 
   if (!verification.ok) {
@@ -51,32 +50,81 @@ async function processBridgeRequest(request) {
   await BridgeRequest.markReadyToClaim(request._id);
 }
 
-async function bridgeWorkerLoop() {
-    logger.info('Bridge worker started');
+async function processWxckToXck(request) {
+  logger.info(`Processing WXCK_TO_XCK burn ${request.evm_tx_hash}`);
 
-    while (!shuttingDown) {
-        try {
-            const cutoff = new Date(Date.now() - (config.bridgeDelayMinutes * 60 * 1000));
-            const request = await BridgeRequest.findNextReadyRequest(cutoff);
+  const verification = await verifyBurnTransaction(request);
 
-            if (request) {
-                workerBusy = true;
+  if (!verification.ok) {
+    const expired = isExpired(request);
 
-                try {
-                    await processBridgeRequest(request);
-                } finally {
-                    workerBusy = false;
-                }
-            }
-        } catch (err) {
-            workerBusy = false;
-            logger.error('Bridge worker error', err);
-        }
+    logger.info(
+      `Bridge request ${request.evm_tx_hash} not ready: ${verification.reason || 'unknown reason'}`
+    );
 
-        await sleep(config.workerIntervalMs);
+    if (verification.permanent || expired) {
+      await BridgeRequest.markFailed(
+        request._id,
+        expired
+          ? `Bridge request expired: ${verification.reason || 'burn transaction was not verified in time'}`
+          : verification.reason || 'wXCK burn verification failed'
+      );
     }
 
-    logger.info('Bridge worker stopped');
+    return;
+  }
+
+  await BridgeRequest.markConfirmed(request._id);
+
+  // Next:
+  // send native XCK to request.xck_address
+  // save native XCK tx_hash
+  // mark completed
+}
+
+async function processBridgeRequest(request) {
+  logger.info(`Processing bridge request ${request._id} direction=${request.direction}`);
+
+  if (request.direction === 'XCK_TO_WXCK') {
+    return processXckToWxck(request);
+  }
+
+  if (request.direction === 'WXCK_TO_XCK') {
+    return processWxckToXck(request);
+  }
+
+  await BridgeRequest.markFailed(
+    request._id,
+    `Unknown bridge direction: ${request.direction}`
+  );
+}
+
+async function bridgeWorkerLoop() {
+  logger.info('Bridge worker started');
+
+  while (!shuttingDown) {
+    try {
+      const cutoff = new Date(Date.now() - (config.bridgeDelayMinutes * 60 * 1000));
+      const request = await BridgeRequest.findNextReadyRequest(cutoff);
+
+      if (request) {
+        workerBusy = true;
+
+        try {
+          await processBridgeRequest(request);
+        } finally {
+          workerBusy = false;
+        }
+      }
+    } catch (err) {
+      workerBusy = false;
+      logger.error('Bridge worker error', err);
+    }
+
+    await sleep(config.workerIntervalMs);
+  }
+
+  logger.info('Bridge worker stopped');
 }
 
 async function gracefulShutdown(signal) {
