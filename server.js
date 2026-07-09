@@ -8,7 +8,7 @@ import { logger } from './utils/logger.js';
 import bridgeRoutes from './routes/bridge.js';
 
 import { BridgeRequest } from './models/bridge-request.js';
-import { verifyXckTransaction } from './chains/xck.js';
+import { verifyXckTransaction, sendXckFromBridgeWallet  } from './chains/xck.js';
 import { verifyBurnTransaction } from './chains/evm.js';
 
 let shuttingDown = false;
