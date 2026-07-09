@@ -427,7 +427,7 @@ router.post('/request/:bridge_id/complete', async (req, res) => {
 
     const verifiedClaim = await verifyClaimTransaction(request, evm_tx_hash);
 
-    await BridgeRequest.markComplete(request._id, evm_tx_hash);
+    await BridgeRequest.markComplete(request._id, {evm_tx_hash});
 
     return res.json({
       ok: true,

@@ -81,7 +81,9 @@ async function processWxckToXck(request) {
     amount_atomic: request.amount_atomic
   });
 
-  await BridgeRequest.markComplete(request._id, payout.tx_hash);
+  await BridgeRequest.markComplete(request._id, {
+    tx_hash: payout.tx_hash
+  });
 }
 
 async function processBridgeRequest(request) {

@@ -241,14 +241,14 @@ export const BridgeRequest = {
     );
   },
 
-  async markComplete(id, evm_tx_hash) {
+  async markComplete(id, fields = {}) {
     const now = new Date();
 
     return archiveRequest(id, {
       status: BRIDGE_STATUSES.COMPLETE,
-      evm_tx_hash,
       error: null,
-      updated_at: now
+      updated_at: now,
+      ...fields
     });
   },
 
