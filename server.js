@@ -8,8 +8,8 @@ import { logger } from './utils/logger.js';
 import bridgeRoutes from './routes/bridge.js';
 
 import { BridgeRequest } from './models/bridge-request.js';
-import { verifyXckTransaction, sendXckFromBridgeWallet  } from './chains/xck.js';
-import { verifyBurnTransaction } from './chains/evm.js';
+import { verifyXckTransaction, sendXckFromBridgeWallet, getBridgeWalletBalance  } from './chains/xck.js';
+import { verifyBurnTransaction, getWrappedSupply } from './chains/evm.js';
 
 let shuttingDown = false;
 let workerBusy = false;
@@ -76,6 +76,14 @@ async function processWxckToXck(request) {
 
   await BridgeRequest.markConfirmed(request._id);
 
+  const backing = await auditBridgeBacking();
+  if (!backing.ok) {
+    await BridgeRequest.markFailed(
+      request._id, `Bridge backing audit failed: deficit_atomic=${backing.deficit_atomic}`);
+
+    return;
+  }
+
   const payout = await sendXckFromBridgeWallet({
     address: request.xck_address,
     amount_atomic: request.amount_atomic
@@ -84,6 +92,43 @@ async function processWxckToXck(request) {
   await BridgeRequest.markComplete(request._id, {
     tx_hash: payout.tx_hash
   });
+}
+
+export async function auditBridgeBacking() {
+  const networks = ['polygon', 'base'];
+
+  const supplies = await Promise.all(
+    networks.map(async (network) => {
+      const supply = await getWrappedSupply(network);
+
+      return {
+        network,
+        supply
+      };
+    })
+  );
+
+  const wxckSupplyAtomic = supplies.reduce(
+    (total, item) => total + item.supply,
+    0n
+  );
+
+  const wallet = await getBridgeWalletBalance();
+
+  return {
+    ok: wallet.balance >= wxckSupplyAtomic,
+    wxck_supply_atomic: wxckSupplyAtomic.toString(),
+    wxck_supply_by_network: supplies.reduce((acc, item) => {
+      acc[item.network] = item.supply.toString();
+      return acc;
+    }, {}),
+    xck_bridge_balance_atomic: wallet.balance.toString(),
+    xck_unlocked_balance_atomic: wallet.unlocked_balance.toString(),
+    deficit_atomic:
+      wallet.balance >= wxckSupplyAtomic
+        ? '0'
+        : (wxckSupplyAtomic - wallet.balance).toString()
+  };
 }
 
 async function processBridgeRequest(request) {

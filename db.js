@@ -25,15 +25,35 @@ async function createIndexes() {
   const bridgeRequests = db.collection('bridge_requests');
   const bridgeHistory = db.collection('bridge_requests_history');
 
-  // Unique only when tx_hash exists and is a string
+  const uniqueStringIndexOptions = (name, field) => ({
+    name,
+    unique: true,
+    partialFilterExpression: {
+      [field]: { $type: 'string' }
+    }
+  });
+
+  // Active requests: unique only when hash exists and is a string.
+  // Allows many null/missing tx_hash / evm_tx_hash values.
   await bridgeRequests.createIndex(
     { tx_hash: 1 },
-    {
-      unique: true,
-      partialFilterExpression: {
-        tx_hash: { $type: "string" }
-      }
-    }
+    uniqueStringIndexOptions('uniq_bridge_requests_tx_hash', 'tx_hash')
+  );
+
+  await bridgeRequests.createIndex(
+    { evm_tx_hash: 1 },
+    uniqueStringIndexOptions('uniq_bridge_requests_evm_tx_hash', 'evm_tx_hash')
+  );
+
+  // History: also enforce uniqueness after archiving completed/failed requests.
+  await bridgeHistory.createIndex(
+    { tx_hash: 1 },
+    uniqueStringIndexOptions('uniq_bridge_history_tx_hash', 'tx_hash')
+  );
+
+  await bridgeHistory.createIndex(
+    { evm_tx_hash: 1 },
+    uniqueStringIndexOptions('uniq_bridge_history_evm_tx_hash', 'evm_tx_hash')
   );
 
   await bridgeRequests.createIndex(

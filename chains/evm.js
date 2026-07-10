@@ -1,9 +1,14 @@
 import { ethers } from 'ethers';
 import { config } from '../config.js';
 
-const wxckInterface = new ethers.Interface([
-  'event BridgeBurned(bytes32 indexed bridgeId, address indexed sender, uint256 amount, string xckAddress)'
-]);
+const WXCK_ABI = [
+  'event BridgeBurned(bytes32 indexed bridgeId, address indexed sender, uint256 amount, string xckAddress)',
+  'function totalSupply() view returns (uint256)'
+];
+
+const wxckInterface = new ethers.Interface(WXCK_ABI);
+
+const contractCache = new Map();
 
 function getEvmConfig(network) {
   if (network === 'polygon') {
@@ -24,6 +29,27 @@ function getEvmConfig(network) {
 
   throw new Error(`Unsupported EVM network: ${network}`);
 }
+
+function getWxckContract(network) {
+  if (!contractCache.has(network)) {
+    const evm = getEvmConfig(network);
+
+    const provider = new ethers.JsonRpcProvider(evm.rpcUrl);
+
+    const contract = new ethers.Contract(
+      evm.contractAddress,
+      WXCK_ABI,
+      provider
+    );
+
+    contractCache.set(network, contract);
+  }
+
+  return contractCache.get(network);
+}
+
+
+
 
 export async function createEvmClaim(request) {
   try {
@@ -114,7 +140,8 @@ export async function verifyBurnTransaction(request) {
     };
   }
 
-  const evm = getEvmConfig(request.network);
+  const network = String(request.network || '').toLowerCase();
+  const evm = getEvmConfig(network);
   const provider = new ethers.JsonRpcProvider(evm.rpcUrl);
   const wxckContractAddress = evm.contractAddress.toLowerCase();
 
@@ -142,7 +169,7 @@ export async function verifyBurnTransaction(request) {
     return {
       ok: false,
       permanent: true,
-      reason: `Burn transaction failed on ${request.network}`
+      reason: `Burn transaction failed on ${network}`
     };
   }
 
@@ -227,4 +254,9 @@ export async function verifyBurnTransaction(request) {
     permanent: false,
     reason: null
   };
+}
+
+export async function getWrappedSupply(network = 'polygon') {
+  const contract = getWxckContract(network);
+  return await contract.totalSupply();
 }

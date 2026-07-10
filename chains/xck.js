@@ -132,3 +132,14 @@ export async function sendXckFromBridgeWallet({
     tx_key_list: result.tx_key_list || []
   };
 }
+
+export async function getBridgeWalletBalance() {
+  const result = await walletRpc('get_balance', {
+    account_index: 0
+  });
+
+  return {
+    balance: BigInt(result.balance),
+    unlocked_balance: BigInt(result.unlocked_balance)
+  };
+}
