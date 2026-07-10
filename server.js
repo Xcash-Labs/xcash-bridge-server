@@ -88,9 +88,8 @@ async function processWxckToXck(request) {
     await BridgeRequest.markFailed(
       request._id,
       `Bridge backing audit failed for ${request.network}: ` +
-      `deficit_atomic=${backing.deficit_atomic}`
-    );
-
+      `deficit_atomic=${backing.deficit_atomic}`);
+    process.exit(1);
     return;
   }
 
