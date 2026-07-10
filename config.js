@@ -2,10 +2,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-walletRpcHost: required('WALLET_RPC_HOST'),
-
-
-
 function required(name) {
   const value = process.env[name];
 
