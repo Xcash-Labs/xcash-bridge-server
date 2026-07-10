@@ -160,3 +160,27 @@ export async function sendXckFromBridgeWallet({
     tx_key_list: result.tx_key_list || []
   };
 }
+
+export async function getBridgeWalletBalance(network) {
+  try {
+    const result = await walletRpc(network, 'get_balance', {
+      account_index: 0
+    });
+
+    if (
+      result.balance === undefined ||
+      result.unlocked_balance === undefined
+    ) {
+      throw new Error('Wallet RPC returned an invalid balance response');
+    }
+
+    return {
+      balance: BigInt(result.balance),
+      unlocked_balance: BigInt(result.unlocked_balance)
+    };
+  } catch (err) {
+    throw new Error(
+      `Unable to get ${network} bridge wallet balance: ${err.message}`
+    );
+  }
+}
