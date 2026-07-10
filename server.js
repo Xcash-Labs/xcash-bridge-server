@@ -8,7 +8,7 @@ import { logger } from './utils/logger.js';
 import bridgeRoutes from './routes/bridge.js';
 
 import { BridgeRequest } from './models/bridge-request.js';
-import { verifyXckTransaction, sendXckFromBridgeWallet, getBridgeWalletBalance  } from './chains/xck.js';
+import { verifyXckTransaction, sendXckFromBridgeWallet, getBridgeWalletBalance } from './chains/xck.js';
 import { verifyBurnTransaction, getWrappedSupply } from './chains/evm.js';
 
 let shuttingDown = false;
@@ -51,7 +51,9 @@ async function processXckToWxck(request) {
 }
 
 async function processWxckToXck(request) {
-  logger.info(`Processing WXCK_TO_XCK burn ${request.evm_tx_hash}`);
+  logger.info(
+    `Processing WXCK_TO_XCK burn ${request.evm_tx_hash} network=${request.network}`
+  );
 
   const verification = await verifyBurnTransaction(request);
 
@@ -59,15 +61,19 @@ async function processWxckToXck(request) {
     const expired = isExpired(request);
 
     logger.info(
-      `Bridge request ${request.evm_tx_hash} not ready: ${verification.reason || 'unknown reason'}`
+      `Bridge request ${request.evm_tx_hash} not ready: ${verification.reason || 'unknown reason'
+      }`
     );
 
     if (verification.permanent || expired) {
       await BridgeRequest.markFailed(
         request._id,
         expired
-          ? `Bridge request expired: ${verification.reason || 'burn transaction was not verified in time'}`
-          : verification.reason || 'wXCK burn verification failed'
+          ? `Bridge request expired: ${verification.reason ||
+          'burn transaction was not verified in time'
+          }`
+          : verification.reason ||
+          'wXCK burn verification failed'
       );
     }
 
@@ -76,15 +82,20 @@ async function processWxckToXck(request) {
 
   await BridgeRequest.markConfirmed(request._id);
 
-  const backing = await auditBridgeBacking();
+  const backing = await auditBridgeBacking(request.network);
+
   if (!backing.ok) {
     await BridgeRequest.markFailed(
-      request._id, `Bridge backing audit failed: deficit_atomic=${backing.deficit_atomic}`);
+      request._id,
+      `Bridge backing audit failed for ${request.network}: ` +
+      `deficit_atomic=${backing.deficit_atomic}`
+    );
 
     return;
   }
 
   const payout = await sendXckFromBridgeWallet({
+    network: request.network,
     address: request.xck_address,
     amount_atomic: request.amount_atomic
   });
@@ -94,36 +105,23 @@ async function processWxckToXck(request) {
   });
 }
 
-export async function auditBridgeBacking() {
-  const networks = ['polygon', 'base'];
+export async function auditBridgeBacking(network) {
+  const normalizedNetwork = String(network || '').toLowerCase();
 
-  const supplies = await Promise.all(
-    networks.map(async (network) => {
-      const supply = await getWrappedSupply(network);
+  if (!['polygon', 'base'].includes(normalizedNetwork)) {
+    throw new Error(`Unsupported bridge network: ${network}`);
+  }
 
-      return {
-        network,
-        supply
-      };
-    })
-  );
-
-  const wxckSupplyAtomic = supplies.reduce(
-    (total, item) => total + item.supply,
-    0n
-  );
-
-  const wallet = await getBridgeWalletBalance();
+  const wxckSupplyAtomic = await getWrappedSupply(normalizedNetwork);
+  const wallet = await getBridgeWalletBalance(normalizedNetwork);
 
   return {
+    network: normalizedNetwork,
     ok: wallet.balance >= wxckSupplyAtomic,
     wxck_supply_atomic: wxckSupplyAtomic.toString(),
-    wxck_supply_by_network: supplies.reduce((acc, item) => {
-      acc[item.network] = item.supply.toString();
-      return acc;
-    }, {}),
     xck_bridge_balance_atomic: wallet.balance.toString(),
-    xck_unlocked_balance_atomic: wallet.unlocked_balance.toString(),
+    xck_unlocked_balance_atomic:
+      wallet.unlocked_balance.toString(),
     deficit_atomic:
       wallet.balance >= wxckSupplyAtomic
         ? '0'

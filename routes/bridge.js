@@ -1,9 +1,8 @@
 import express from 'express';
 import { BridgeRequest, ACTIVE_BRIDGE_STATUSES, BRIDGE_STATUSES } from '../models/bridge-request.js';
-import { createEvmClaim } from '../chains/evm.js';
+import { createEvmClaim, getEvmConfig } from '../chains/evm.js';
 import { ObjectId } from 'mongodb';
 import { ethers } from 'ethers';
-import { config } from '../config.js';
 import {
   isValidTxHash,
   isValidEvmAddress,
@@ -307,25 +306,21 @@ router.post('/request/:bridge_id/claim', async (req, res) => {
 });
 
 async function verifyClaimTransaction(request, evm_tx_hash) {
-  const network = String(request.network || '').toLowerCase();
+  const network = normalizeNetwork(request.network);
 
-  let rpcUrl;
-  let contractAddress;
-
-  if (network === 'polygon') {
-    rpcUrl = config.polygonRpcUrl;
-    contractAddress = config.polygonWxckContractAddress;
-  } else if (network === 'base') {
-    rpcUrl = config.baseRpcUrl;
-    contractAddress = config.baseWxckContractAddress;
-  } else {
-    throw new Error('Unsupported EVM network');
-  }
+  const {
+    chainId,
+    rpcUrl,
+    contractAddress
+  } = getEvmConfig(network);
 
   if (!rpcUrl) throw new Error(`Missing RPC URL for ${network}`);
   if (!contractAddress) throw new Error(`Missing wXCK contract address for ${network}`);
 
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const provider = new ethers.JsonRpcProvider(
+    rpcUrl,
+    Number(chainId)
+  );
   const receipt = await provider.getTransactionReceipt(evm_tx_hash);
 
   if (!receipt) {
@@ -427,7 +422,7 @@ router.post('/request/:bridge_id/complete', async (req, res) => {
 
     const verifiedClaim = await verifyClaimTransaction(request, evm_tx_hash);
 
-    await BridgeRequest.markComplete(request._id, {evm_tx_hash});
+    await BridgeRequest.markComplete(request._id, { evm_tx_hash });
 
     return res.json({
       ok: true,

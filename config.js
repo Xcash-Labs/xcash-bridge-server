@@ -2,6 +2,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+walletRpcHost: required('WALLET_RPC_HOST'),
+
+
+
 function required(name) {
   const value = process.env[name];
 
@@ -31,16 +35,21 @@ export const config = {
   mongoUri: required('MONGO_URI'),
   mongoDb: process.env.MONGO_DB || 'xcash_bridge',
   allowedOrigin: process.env.ALLOWED_ORIGIN || '*',
-  bridgeXckAddress: required('BRIDGE_XCK_ADDRESS'),
+  polygonBridgeXckAddress: required('POLYGON_BRIDGE_XCK_ADDRESS'),
+  baseBridgeXckAddress: required('BASE_BRIDGE_XCK_ADDRESS'),
   workerIntervalMs: numberEnv('WORKER_INTERVAL_MS', 60000),
   walletRpcHost: process.env.WALLET_RPC_HOST || '127.0.0.1',
-  walletRpcPort: numberEnv('WALLET_RPC_PORT', 18289),
+  walletRpcPortPolygon: numberEnv('WALLET_RPC_PORT_POLYGON', 18289),
+  walletRpcPortBase: numberEnv('WALLET_RPC_PORT_BASE', 18290),
   xckToWxckDelayMinutes: numberEnv('XCK_TO_WXCK_DELAY_MINUTES', 11),
   wxckToXckDelayMinutes: numberEnv('WXCK_TO_XCK_DELAY_MINUTES', 2),
   requestTimeoutMinutes: numberEnv('BRIDGE_REQUEST_TIMEOUT_MINUTES', 60),
   claimExpirationSeconds: numberEnv('CLAIM_EXPIRATION_SECONDS',604800),
   bridgePrivateKey: required('BRIDGE_PRIVATE_KEY'),
-  polygonChainId: numberEnv('POLYGON_CHAIN_ID', 80002),
+  polygonChainId: numberEnv('POLYGON_CHAIN_ID'),
   polygonRpcUrl: required('POLYGON_RPC_URL'),
-  polygonWxckContractAddress: required('POLYGON_WXCK_CONTRACT_ADDRESS')
+  polygonWxckContractAddress: required('POLYGON_WXCK_CONTRACT_ADDRESS'),
+  baseChainId: numberEnv('BASE_CHAIN_ID'),
+  baseRpcUrl: required('BASE_RPC_URL'),
+  baseWxckContractAddress: required('BASE_WXCK_CONTRACT_ADDRESS')
 };

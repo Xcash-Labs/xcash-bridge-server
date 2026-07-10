@@ -1,7 +1,28 @@
 import { config } from '../config.js';
 
-async function walletRpc(method, params = {}) {
-  const url = `http://${config.walletRpcHost}:${config.walletRpcPort}/json_rpc`;
+function getWalletRpcConfig(network) {
+  switch (String(network || '').toLowerCase()) {
+    case 'polygon':
+      return {
+        host: config.walletRpcHost,
+        port: config.walletRpcPortPolygon
+      };
+
+    case 'base':
+      return {
+        host: config.walletRpcHost,
+        port: config.walletRpcPortBase
+      };
+
+    default:
+      throw new Error(`Unsupported network: ${network}`);
+  }
+}
+
+async function walletRpc(network, method, params = {}) {
+  const rpc = getWalletRpcConfig(network);
+
+  const url = `http://${rpc.host}:${rpc.port}/json_rpc`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -18,7 +39,8 @@ async function walletRpc(method, params = {}) {
 
   if (!response.ok) {
     throw new Error(
-      `Wallet RPC HTTP ${response.status}: ${response.statusText}`
+      `Wallet RPC ${network} on port ${rpc.port} returned HTTP ` +
+      `${response.status}: ${response.statusText}`
     );
   }
 
@@ -33,16 +55,18 @@ async function walletRpc(method, params = {}) {
   return json.result;
 }
 
-export async function getTransferByTxId(txid) {
-  return walletRpc('get_transfer_by_txid', {
+export async function getTransferByTxId(network, txid) {
+  return walletRpc(network, 'get_transfer_by_txid', {
     txid
   });
 }
 
 export async function verifyXckTransaction(request) {
   try {
-
-    const result = await getTransferByTxId(request.tx_hash);
+    const result = await getTransferByTxId(
+      request.network,
+      request.tx_hash
+    );
 
     if (!result || !result.transfer) {
       return {
@@ -54,7 +78,6 @@ export async function verifyXckTransaction(request) {
 
     const transfer = result.transfer;
 
-    // Should be an incoming transfer.
     if (transfer.type !== 'in') {
       return {
         ok: false,
@@ -63,7 +86,6 @@ export async function verifyXckTransaction(request) {
       };
     }
 
-    // Deposit must be unlocked before bridging.
     if (transfer.locked) {
       return {
         ok: false,
@@ -80,7 +102,6 @@ export async function verifyXckTransaction(request) {
       };
     }
 
-    // Verify amount.
     if (BigInt(transfer.amount) !== BigInt(request.amount_atomic)) {
       return {
         ok: false,
@@ -103,14 +124,21 @@ export async function verifyXckTransaction(request) {
 }
 
 export async function sendXckFromBridgeWallet({
+  network,
   address,
   amount_atomic
 }) {
-  const result = await walletRpc('transfer_split', {
+  const amount = BigInt(amount_atomic);
+
+  if (amount <= 0n || amount > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error('Invalid or unsupported XCK payout amount');
+  }
+
+  const result = await walletRpc(network, 'transfer_split', {
     destinations: [
       {
         address,
-        amount: Number(amount_atomic)
+        amount: Number(amount)
       }
     ],
     account_index: 0,
@@ -130,16 +158,5 @@ export async function sendXckFromBridgeWallet({
       : result.tx_hash,
     tx_hash_list: result.tx_hash_list || [],
     tx_key_list: result.tx_key_list || []
-  };
-}
-
-export async function getBridgeWalletBalance() {
-  const result = await walletRpc('get_balance', {
-    account_index: 0
-  });
-
-  return {
-    balance: BigInt(result.balance),
-    unlocked_balance: BigInt(result.unlocked_balance)
   };
 }

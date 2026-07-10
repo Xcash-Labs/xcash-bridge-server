@@ -10,46 +10,66 @@ const wxckInterface = new ethers.Interface(WXCK_ABI);
 
 const contractCache = new Map();
 
-function getEvmConfig(network) {
-  if (network === 'polygon') {
+function normalizeNetwork(network) {
+  return String(network || '').trim().toLowerCase();
+}
+
+export function getEvmConfig(network) {
+  const normalizedNetwork = normalizeNetwork(network);
+
+  if (normalizedNetwork === 'polygon') {
     return {
+      network: normalizedNetwork,
       chainId: config.polygonChainId,
       rpcUrl: config.polygonRpcUrl,
-      contractAddress: config.polygonWxckContractAddress,
+      contractAddress: config.polygonWxckContractAddress
     };
   }
 
-  if (network === 'base') {
+  if (normalizedNetwork === 'base') {
     return {
+      network: normalizedNetwork,
       chainId: config.baseChainId,
       rpcUrl: config.baseRpcUrl,
       contractAddress: config.baseWxckContractAddress
     };
   }
 
-  throw new Error(`Unsupported EVM network: ${network}`);
+  throw new Error(`Unsupported EVM network: ${normalizedNetwork || network}`);
 }
 
 function getWxckContract(network) {
-  if (!contractCache.has(network)) {
-    const evm = getEvmConfig(network);
+  const normalizedNetwork = normalizeNetwork(network);
 
-    const provider = new ethers.JsonRpcProvider(evm.rpcUrl);
+  if (!contractCache.has(normalizedNetwork)) {
+    const evm = getEvmConfig(normalizedNetwork);
+
+    if (!evm.rpcUrl) {
+      throw new Error(`Missing RPC URL for network: ${normalizedNetwork}`);
+    }
+
+    if (!evm.contractAddress) {
+      throw new Error(
+        `Missing wXCK contract address for network: ${normalizedNetwork}`
+      );
+    }
+
+    const provider = new ethers.JsonRpcProvider(
+      evm.rpcUrl,
+      Number(evm.chainId)
+    );
 
     const contract = new ethers.Contract(
-      evm.contractAddress,
+      ethers.getAddress(evm.contractAddress),
       WXCK_ABI,
       provider
     );
 
-    contractCache.set(network, contract);
+    contractCache.set(normalizedNetwork, contract);
   }
 
-  return contractCache.get(network);
+  return contractCache.get(normalizedNetwork);
 }
-
-
-
 
 export async function createEvmClaim(request) {
   try {
@@ -57,7 +77,7 @@ export async function createEvmClaim(request) {
       throw new Error(`Claims are only supported for XCK_TO_WXCK requests`);
     }
 
-    const network = String(request.network || '').toLowerCase();
+    const network = normalizeNetwork(request.network);
     const { chainId, contractAddress } = getEvmConfig(network);
 
     if (!contractAddress) {
@@ -139,11 +159,25 @@ export async function verifyBurnTransaction(request) {
       reason: 'Missing EVM transaction hash'
     };
   }
-
-  const network = String(request.network || '').toLowerCase();
+  const network = normalizeNetwork(request.network);
   const evm = getEvmConfig(network);
-  const provider = new ethers.JsonRpcProvider(evm.rpcUrl);
-  const wxckContractAddress = evm.contractAddress.toLowerCase();
+
+  if (!evm.rpcUrl) {
+    throw new Error(`Missing RPC URL for network: ${network}`);
+  }
+
+  if (!evm.contractAddress) {
+    throw new Error(`Missing wXCK contract address for network: ${network}`);
+  }
+
+  const provider = new ethers.JsonRpcProvider(
+    evm.rpcUrl,
+    Number(evm.chainId)
+  );
+
+  const wxckContractAddress = ethers
+    .getAddress(evm.contractAddress)
+    .toLowerCase();
 
   let receipt;
 
@@ -257,6 +291,8 @@ export async function verifyBurnTransaction(request) {
 }
 
 export async function getWrappedSupply(network = 'polygon') {
-  const contract = getWxckContract(network);
+  const normalizedNetwork = normalizeNetwork(network);
+  const contract = getWxckContract(normalizedNetwork);
+
   return await contract.totalSupply();
 }
