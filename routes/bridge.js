@@ -314,36 +314,45 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
     contractAddress
   } = getEvmConfig(network);
 
-  if (!rpcUrl) throw new Error(`Missing RPC URL for ${network}`);
-  if (!contractAddress) throw new Error(`Missing wXCK contract address for ${network}`);
+  if (!rpcUrl) {
+    throw new Error(`Missing RPC URL for ${network}`);
+  }
+
+  if (!contractAddress) {
+    throw new Error(
+      `Missing wXCK contract address for ${network}`
+    );
+  }
 
   const provider = new ethers.JsonRpcProvider(
     rpcUrl,
     Number(chainId)
   );
-  const receipt = await provider.getTransactionReceipt(evm_tx_hash);
+
+  const receipt = await provider.getTransactionReceipt(
+    evm_tx_hash
+  );
 
   if (!receipt) {
     throw new Error('Claim transaction not found');
   }
 
-console.log('Claim verification:', {
-  requestNetwork: request.network,
-  normalizedNetwork: network,
-  chainId,
-  rpcUrl,
-  configuredContractAddress: contractAddress,
-  receiptTo: receipt.to,
-  evmTxHash: evm_tx_hash
-});
-
   if (receipt.status !== 1) {
     throw new Error('Claim transaction failed');
   }
 
-  if (!receipt.to || receipt.to.toLowerCase() !== contractAddress.toLowerCase()) {
-    throw new Error('Transaction was not sent to the wXCK contract');
-  }
+  /*
+   * Do not require receipt.to to equal the wXCK contract.
+   *
+   * MetaMask delegated-account transactions may send the
+   * top-level transaction to DelegationManager, which then
+   * calls the wXCK contract internally.
+   *
+   * Instead, verify that the configured wXCK contract emitted
+   * the expected BridgeClaimed event.
+   */
+  const expectedContractAddress =
+    contractAddress.toLowerCase();
 
   const iface = new ethers.Interface([
     'event BridgeClaimed(bytes32 indexed bridgeId, address indexed recipient, uint256 amount, uint256 deadline)'
@@ -352,39 +361,60 @@ console.log('Claim verification:', {
   let claimEvent = null;
 
   for (const log of receipt.logs) {
-    if (!log.address || log.address.toLowerCase() !== contractAddress.toLowerCase()) {
+    if (
+      !log.address ||
+      log.address.toLowerCase() !== expectedContractAddress
+    ) {
       continue;
     }
 
     try {
       const parsed = iface.parseLog(log);
 
-      if (!parsed) {
-        continue;
-      }
-
-      if (parsed.name === 'BridgeClaimed') {
+      if (parsed?.name === 'BridgeClaimed') {
         claimEvent = parsed.args;
         break;
       }
-    } catch (err) {
-      console.log('Not a BridgeClaimed event:', err.message);
+    } catch {
+      // Ignore unrelated logs emitted by the wXCK contract.
     }
   }
 
   if (!claimEvent) {
-    throw new Error('BridgeClaimed event not found');
+    throw new Error(
+      'BridgeClaimed event from the configured wXCK contract was not found'
+    );
+  }
+
+  const expectedBridgeId = ethers.keccak256(
+    ethers.toUtf8Bytes(String(request._id))
+  );
+
+  if (
+    claimEvent.bridgeId.toLowerCase() !==
+    expectedBridgeId.toLowerCase()
+  ) {
+    throw new Error(
+      'Claim bridgeId does not match bridge request'
+    );
   }
 
   if (
     claimEvent.recipient.toLowerCase() !==
     request.evm_address.toLowerCase()
   ) {
-    throw new Error('Claim recipient does not match bridge request');
+    throw new Error(
+      'Claim recipient does not match bridge request'
+    );
   }
 
-  if (claimEvent.amount.toString() !== String(request.amount_atomic)) {
-    throw new Error('Claim amount does not match bridge request');
+  if (
+    claimEvent.amount.toString() !==
+    String(request.amount_atomic)
+  ) {
+    throw new Error(
+      'Claim amount does not match bridge request'
+    );
   }
 
   return {
