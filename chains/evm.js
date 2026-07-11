@@ -207,10 +207,10 @@ export async function verifyBurnTransaction(request) {
     };
   }
 
-// Do not require receipt.to to equal the wXCK contract.
-// Base delegated transactions may route through DelegationManager.
-// The BridgeBurned event below verifies that the configured
-// wXCK contract actually processed the burn
+  // Do not require receipt.to to equal the wXCK contract.
+  // Base delegated transactions may route through DelegationManager.
+  // The BridgeBurned event below verifies that the configured
+  // wXCK contract actually processed the burn
 
   let burnedEvent = null;
 
@@ -222,7 +222,7 @@ export async function verifyBurnTransaction(request) {
     try {
       const parsed = wxckInterface.parseLog(log);
 
-      if (parsed.name === 'BridgeBurned') {
+      if (parsed?.name === 'BridgeBurned') {
         burnedEvent = parsed;
         break;
       }
