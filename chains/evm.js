@@ -207,13 +207,10 @@ export async function verifyBurnTransaction(request) {
     };
   }
 
-  if (!receipt.to || receipt.to.toLowerCase() !== wxckContractAddress) {
-    return {
-      ok: false,
-      permanent: true,
-      reason: 'Burn transaction was not sent to the wXCK contract'
-    };
-  }
+// Do not require receipt.to to equal the wXCK contract.
+// Base delegated transactions may route through DelegationManager.
+// The BridgeBurned event below verifies that the configured
+// wXCK contract actually processed the burn
 
   let burnedEvent = null;
 
