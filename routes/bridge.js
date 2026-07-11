@@ -327,6 +327,16 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
     throw new Error('Claim transaction not found');
   }
 
+console.log('Claim verification:', {
+  requestNetwork: request.network,
+  normalizedNetwork: network,
+  chainId,
+  rpcUrl,
+  configuredContractAddress: contractAddress,
+  receiptTo: receipt.to,
+  evmTxHash: evm_tx_hash
+});
+
   if (receipt.status !== 1) {
     throw new Error('Claim transaction failed');
   }
