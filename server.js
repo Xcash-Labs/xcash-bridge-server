@@ -88,7 +88,7 @@ async function processWxckToXck(request) {
     const message =
       `CRITICAL: Bridge backing audit failed for ${request.network}. ` +
       `Deficit: ${backing.deficit_atomic} atomic XCK`;
-    console.error(message);
+    logger.error(message);
     await BridgeRequest.markFailed(request._id, message);
     process.exit(1);
   }
