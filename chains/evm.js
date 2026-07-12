@@ -110,17 +110,7 @@ export async function createEvmClaim(request) {
       );
     }
 
-
-logger.error(
-  `Base key diagnostic: ` +
-  `type=${typeof bridgePrivateKey} ` +
-  `length=${typeof bridgePrivateKey === 'string' ? bridgePrivateKey.length : 'n/a'} ` +
-  `startsWith0x=${typeof bridgePrivateKey === 'string' && bridgePrivateKey.startsWith('0x')}`
-);
-
-
-
-    if (!/^0x[a-fA-F0-9]{64}$/.test(bridgePrivateKey)) {
+    if (!/^[a-fA-F0-9]{64}$/.test(bridgePrivateKey)) {
       const keyError = new Error(
         `Invalid claim signer private key format for network: ${network}`
       );
@@ -186,7 +176,7 @@ logger.error(
 
     const safeMessages = {
       INVALID_BRIDGE_PRIVATE_KEY:
-        `Private key must be 0x followed by exactly 64 hexadecimal characters for network=${request?.network || 'unknown'}`
+        `Private key must contain exactly 64 hexadecimal characters for network=${request?.network || 'unknown'}`
     };
 
     const safeDetail =
