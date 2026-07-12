@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { config } from '../config.js';
-import { logger } from '../utils/logger.js' 
+import { logger } from '../utils/logger.js'
 
 const WXCK_ABI = [
   'event BridgeBurned(bytes32 indexed bridgeId, address indexed sender, uint256 amount, string xckAddress)',
@@ -111,9 +111,12 @@ export async function createEvmClaim(request) {
     }
 
     if (!/^0x[a-fA-F0-9]{64}$/.test(bridgePrivateKey)) {
-      throw new Error(
-        `Invalid claim signer private key for network: ${network}`
+      const keyError = new Error(
+        `Invalid claim signer private key format for network: ${network}`
       );
+
+      keyError.code = 'INVALID_BRIDGE_PRIVATE_KEY';
+      throw keyError;
     }
 
     const signerWallet = new ethers.Wallet(bridgePrivateKey);
@@ -166,8 +169,25 @@ export async function createEvmClaim(request) {
       reason: null
     };
   } catch (err) {
+    const errorCode =
+      err?.code ||
+      err?.name ||
+      'UNKNOWN_ERROR';
+
+    const safeMessages = {
+      INVALID_BRIDGE_PRIVATE_KEY:
+        `Private key must be 0x followed by exactly 64 hexadecimal characters for network=${request?.network || 'unknown'}`
+    };
+
+    const safeDetail =
+      safeMessages[errorCode] ||
+      'See the preceding validation and configuration checks';
+
     logger.error(
-      `Claim authorization failed for network=${request?.network || 'unknown'}: ` + `${err?.code || err?.name || 'unknown error'}`
+      `Claim authorization failed: ` +
+      `network=${request?.network || 'unknown'} ` +
+      `code=${errorCode} ` +
+      `detail="${safeDetail}"`
     );
 
     return {
