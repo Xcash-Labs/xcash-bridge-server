@@ -84,15 +84,32 @@ export async function createEvmClaim(request) {
       throw new Error(`Missing wXCK contract address for network: ${network}`);
     }
 
-    if (!config.bridgePrivateKey) {
-      throw new Error('Missing claim signer private key');
-    }
-
     if (!request.evm_address) {
       throw new Error('Missing EVM claim recipient address');
     }
 
-    const signerWallet = new ethers.Wallet(config.bridgePrivateKey);
+    let bridgePrivateKey;
+
+    switch (network) {
+      case 'polygon':
+        bridgePrivateKey = config.bridgePrivateKeyPolygon;
+        break;
+
+      case 'base':
+        bridgePrivateKey = config.bridgePrivateKeyBase;
+        break;
+
+      default:
+        throw new Error(`Unsupported network: ${network}`);
+    }
+
+    if (!bridgePrivateKey) {
+      throw new Error(
+        `Missing claim signer private key for network: ${network}`
+      );
+    }
+
+    const signerWallet = new ethers.Wallet(bridgePrivateKey);
 
     const bridgeId = ethers.keccak256(
       ethers.toUtf8Bytes(String(request._id))
