@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { config } from '../config.js';
+import { logger } from '../utils/logger.js' 
 
 const WXCK_ABI = [
   'event BridgeBurned(bytes32 indexed bridgeId, address indexed sender, uint256 amount, string xckAddress)',
@@ -109,6 +110,12 @@ export async function createEvmClaim(request) {
       );
     }
 
+    if (!/^0x[a-fA-F0-9]{64}$/.test(bridgePrivateKey)) {
+      throw new Error(
+        `Invalid claim signer private key for network: ${network}`
+      );
+    }
+
     const signerWallet = new ethers.Wallet(bridgePrivateKey);
 
     const bridgeId = ethers.keccak256(
@@ -159,11 +166,16 @@ export async function createEvmClaim(request) {
       reason: null
     };
   } catch (err) {
+    logger.error(
+      `Claim authorization failed for network=${request?.network || 'unknown'}: ` +
+      `${err?.code || err?.name || 'unknown error'}`
+    );
+
     return {
       ok: false,
       evm_tx_hash: null,
       claim: null,
-      reason: err.message || 'Claim authorization failed'
+      reason: 'Claim authorization failed'
     };
   }
 }
