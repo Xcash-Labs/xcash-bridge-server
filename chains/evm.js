@@ -167,8 +167,7 @@ export async function createEvmClaim(request) {
     };
   } catch (err) {
     logger.error(
-      `Claim authorization failed for network=${request?.network || 'unknown'}: ` +
-      `${err?.code || err?.name || 'unknown error'}`
+      `Claim authorization failed for network=${request?.network || 'unknown'}: ` + `${err?.code || err?.name || 'unknown error'}`
     );
 
     return {
