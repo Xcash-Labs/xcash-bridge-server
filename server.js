@@ -85,12 +85,12 @@ async function processWxckToXck(request) {
   const backing = await auditBridgeBacking(request.network);
 
   if (!backing.ok) {
-    await BridgeRequest.markFailed(
-      request._id,
-      `Bridge backing audit failed for ${request.network}: ` +
-      `deficit_atomic=${backing.deficit_atomic}`);
+    const message =
+      `CRITICAL: Bridge backing audit failed for ${request.network}. ` +
+      `Deficit: ${backing.deficit_atomic} atomic XCK`;
+    console.error(message);
+    await BridgeRequest.markFailed(request._id, message);
     process.exit(1);
-    return;
   }
 
   const payout = await sendXckFromBridgeWallet({
