@@ -19,7 +19,7 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function isExpired(request) {
+function isBridgeRequestExpired(request) {
   return Date.now() - request.created_at.getTime() >
     config.requestTimeoutMinutes * 60 * 1000;
 }
@@ -28,7 +28,7 @@ async function processXckToWxck(request) {
   const verification = await verifyXckTransaction(request);
 
   if (!verification.ok) {
-    const expired = isExpired(request);
+    const expired = isBridgeRequestExpired(request);
 
     logger.info(
       `Bridge request ${request.tx_hash} not ready: ${verification.reason || 'unknown reason'}`
@@ -58,7 +58,7 @@ async function processWxckToXck(request) {
   const verification = await verifyBurnTransaction(request);
 
   if (!verification.ok) {
-    const expired = isExpired(request);
+    const expired = isBridgeRequestExpired(request);
 
     logger.info(
       `Bridge request ${request.evm_tx_hash} not ready: ${verification.reason || 'unknown reason'
