@@ -149,7 +149,8 @@ export async function sendXckFromBridgeWallet({
     get_tx_key: true,
     do_not_relay: false,
     get_tx_hex: false,
-    get_tx_metadata: false
+    get_tx_metadata: false,
+    subtract_fee_from_outputs: [0]
   });
 
   return {
