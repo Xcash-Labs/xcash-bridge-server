@@ -114,17 +114,37 @@ export async function auditBridgeBacking(network) {
   const wxckSupplyAtomic = await getWrappedSupply(normalizedNetwork);
   const wallet = await getBridgeWalletBalance(normalizedNetwork);
 
+  const ok = wallet.balance >= wxckSupplyAtomic;
+
+  if (ok) {
+    logger.info(
+      `Bridge backing audit Succeeded: ` +
+      `network=${normalizedNetwork} ` +
+      `balance=${wallet.balance} ` +
+      `required=${wxckSupplyAtomic} ` +
+      `deficit=${wxckSupplyAtomic - wallet.balance}`
+    );
+  }
+
+  if (!ok) {
+    logger.error(
+      `Bridge backing audit FAILED: ` +
+      `network=${normalizedNetwork} ` +
+      `balance=${wallet.balance} ` +
+      `required=${wxckSupplyAtomic} ` +
+      `deficit=${wxckSupplyAtomic - wallet.balance}`
+    );
+  }
+
   return {
     network: normalizedNetwork,
-    ok: wallet.balance >= wxckSupplyAtomic,
+    ok,
     wxck_supply_atomic: wxckSupplyAtomic.toString(),
     xck_bridge_balance_atomic: wallet.balance.toString(),
-    xck_unlocked_balance_atomic:
-      wallet.unlocked_balance.toString(),
-    deficit_atomic:
-      wallet.balance >= wxckSupplyAtomic
-        ? '0'
-        : (wxckSupplyAtomic - wallet.balance).toString()
+    xck_unlocked_balance_atomic: wallet.unlocked_balance.toString(),
+    deficit_atomic: ok
+      ? '0'
+      : (wxckSupplyAtomic - wallet.balance).toString()
   };
 }
 
