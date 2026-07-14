@@ -3,7 +3,6 @@ import { BridgeRequest, ACTIVE_BRIDGE_STATUSES, BRIDGE_STATUSES } from '../model
 import { createEvmClaim, getEvmConfig } from '../chains/evm.js';
 import { ObjectId } from 'mongodb';
 import { ethers } from 'ethers';
-import { logger } from '../util/logger.js';
 import {
   isValidTxHash,
   isValidEvmAddress,
@@ -345,7 +344,7 @@ if (!/^0x[a-fA-F0-9]{64}$/.test(evm_tx_hash)) {
   throw new Error('Invalid claim transaction hash');
 }
 
-logger.info(
+console.log(
   `Waiting for claim transaction: ` +
   `network=${network} ` +
   `tx_hash=${evm_tx_hash}`
