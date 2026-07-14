@@ -3,6 +3,7 @@ import { BridgeRequest, ACTIVE_BRIDGE_STATUSES, BRIDGE_STATUSES } from '../model
 import { createEvmClaim, getEvmConfig } from '../chains/evm.js';
 import { ObjectId } from 'mongodb';
 import { ethers } from 'ethers';
+import { logger } from './utils/logger.js';
 import {
   isValidTxHash,
   isValidEvmAddress,
