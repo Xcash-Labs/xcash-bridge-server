@@ -143,14 +143,14 @@ export async function sendXckFromBridgeWallet({
     ],
     account_index: 0,
     subaddr_indices: [],
+    subtract_fee_from_outputs: [0],
     priority: 0,
     tx_privacy_settings: 'private',
     unlock_time: 0,
     get_tx_key: true,
     do_not_relay: false,
     get_tx_hex: false,
-    get_tx_metadata: false,
-    subtract_fee_from_outputs: [0]
+    get_tx_metadata: false
   });
 
   return {
