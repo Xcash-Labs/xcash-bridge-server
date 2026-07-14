@@ -329,42 +329,21 @@ async function verifyClaimTransaction(request, evm_tx_hash) {
     Number(chainId)
   );
 
-//  const receipt = await provider.getTransactionReceipt(
-//    evm_tx_hash
-//  );
+  if (!/^0x[a-fA-F0-9]{64}$/.test(evm_tx_hash)) {
+    throw new Error('Invalid claim transaction hash');
+  }
 
-//  if (!receipt) {
-//    throw new Error('Claim transaction not found');
-//  }
-
-
-
-
-if (!/^0x[a-fA-F0-9]{64}$/.test(evm_tx_hash)) {
-  throw new Error('Invalid claim transaction hash');
-}
-
-console.log(
-  `Waiting for claim transaction: ` +
-  `network=${network} ` +
-  `tx_hash=${evm_tx_hash}`
-);
-
-const receipt = await provider.waitForTransaction(
-  evm_tx_hash,
-  1,       // Wait for 1 confirmation
-  30000    // Wait up to 30 seconds
-);
-
-if (!receipt) {
-  throw new Error(
-    'Claim transaction receipt was not available within 30 seconds'
+  const receipt = await provider.waitForTransaction(
+    evm_tx_hash,
+    1,       // Wait for 1 confirmation
+    30000    // Wait up to 30 seconds
   );
-}
 
-
-
-
+  if (!receipt) {
+    throw new Error(
+      'Claim transaction receipt was not available within 30 seconds'
+    );
+  }
 
   if (receipt.status !== 1) {
     throw new Error('Claim transaction failed');
