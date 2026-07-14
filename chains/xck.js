@@ -123,6 +123,42 @@ export async function verifyXckTransaction(request) {
   }
 }
 
+async function daemonRpc(network, method, params = {}) {
+  const rpc = getDaemonRpcConfig(network);
+
+  const url = `http://${rpc.host}:${rpc.port}/json_rpc`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: '0',
+      method,
+      params
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Daemon RPC ${network} returned HTTP ` +
+      `${response.status}: ${response.statusText}`
+    );
+  }
+
+  const json = await response.json();
+
+  if (json.error) {
+    throw new Error(
+      `Daemon RPC ${network} ${method} failed: ${json.error.message}`
+    );
+  }
+
+  return json.result;
+}
+
 export async function sendXckFromBridgeWallet({
   network,
   address,
@@ -134,16 +170,39 @@ export async function sendXckFromBridgeWallet({
     throw new Error('Invalid or unsupported XCK payout amount');
   }
 
+  // Need to estimate the fee and add to the 
+  const feeInfo = await getXckFeeEstimate(network);
+
+  if (!feeInfo || !Array.isArray(feeInfo.fees) || feeInfo.fees.length === 0) {
+    throw new Error('Daemon did not return a valid XCK fee estimate');
+  }
+
+  // Priority 0 matches the transfer_split priority below.
+  const feePerByte = BigInt(feeInfo.fees[0]);
+
+  if (feePerByte <= 0n) {
+    throw new Error('Daemon returned an invalid priority-0 fee rate');
+  }
+
+  // Conservative assumed weight for one private payout.
+  const assumedWeightBytes = 5500n;
+  const estimatedNetworkFee = feePerByte * assumedWeightBytes;
+
+  if (amount >= grossAmount) {
+    throw new Error('Bridge amount is too small to cover the XCK network fee');
+  }
+
+  const payoutAmount = amount - estimatedNetworkFee;
+
   const result = await walletRpc(network, 'transfer_split', {
     destinations: [
       {
         address,
-        amount: Number(amount)
+        amount: Number(payoutAmount)
       }
     ],
     account_index: 0,
     subaddr_indices: [],
-    subtract_fee_from_outputs: [0],
     priority: 0,
     tx_privacy_settings: 'private',
     unlock_time: 0,
