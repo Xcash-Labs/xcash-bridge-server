@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { config } from '../config.js';
-import { logger } from '../utils/logger.js'
+import { logger } from '../utils/logger.js';
 
 const WXCK_ABI = [
   'event BridgeBurned(bytes32 indexed bridgeId, address indexed sender, uint256 amount, string xckAddress)',
@@ -134,7 +134,6 @@ export async function createEvmClaim(request) {
     const chainIdBN = BigInt(chainId);
     const contract = ethers.getAddress(contractAddress);
     const recipient = ethers.getAddress(request.evm_address);
-    const amountBN = BigInt(amount);
     const deadlineBN = BigInt(deadline);
 
     const digest = ethers.keccak256(
@@ -145,7 +144,7 @@ export async function createEvmClaim(request) {
           contract,
           bridgeId,
           recipient,
-          amountBN,
+          amount,
           deadlineBN
         ]
       )
