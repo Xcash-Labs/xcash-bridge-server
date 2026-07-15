@@ -201,10 +201,10 @@ export async function sendXckFromBridgeWallet({
   }
 
   // Conservative assumed weight for one private payout.
-  const assumedWeightBytes = 4000n;
+  const assumedWeightBytes = 4500n;
   const estimatedNetworkFee = feePerByte * assumedWeightBytes;
 
-  if (amount >= grossAmount) {
+  if (amount >= estimatedNetworkFee) {
     throw new Error('Bridge amount is too small to cover the XCK network fee');
   }
 
