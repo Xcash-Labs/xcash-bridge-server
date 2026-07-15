@@ -37,6 +37,8 @@ export const config = {
   walletRpcHost: process.env.WALLET_RPC_HOST || '127.0.0.1',
   walletRpcPortPolygon: numberEnv('WALLET_RPC_PORT_POLYGON', 18289),
   walletRpcPortBase: numberEnv('WALLET_RPC_PORT_BASE', 18290),
+  daemonRpcHost: required('DAEMON_RPC_HOST'),
+  daemonRpcPort: Number(required('DAEMON_RPC_PORT')),
   xckToWxckDelayMinutes: numberEnv('XCK_TO_WXCK_DELAY_MINUTES', 11),
   wxckToXckDelayMinutes: numberEnv('WXCK_TO_XCK_DELAY_MINUTES', 2),
   requestTimeoutMinutes: numberEnv('BRIDGE_REQUEST_TIMEOUT_MINUTES', 60),

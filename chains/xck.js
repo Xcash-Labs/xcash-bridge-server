@@ -123,58 +123,6 @@ export async function verifyXckTransaction(request) {
   }
 }
 
-async function daemonRpc(network, method, params = {}) {
-  const rpc = getDaemonRpcConfig(network);
-
-  const url = `http://${rpc.host}:${rpc.port}/json_rpc`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: '0',
-      method,
-      params
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Daemon RPC ${network} returned HTTP ` +
-      `${response.status}: ${response.statusText}`
-    );
-  }
-
-  const json = await response.json();
-
-  if (json.error) {
-    throw new Error(
-      `Daemon RPC ${network} ${method} failed: ${json.error.message}`
-    );
-  }
-
-  return json.result;
-}
-
-async function getXckFeeEstimate(network) {
-  const result = await daemonRpc(
-    network,
-    'get_fee_estimate',
-    {
-      grace_blocks: 10
-    }
-  );
-
-  if (!result || !Array.isArray(result.fees) || result.fees.length === 0) {
-    throw new Error('Daemon did not return a valid XCK fee estimate');
-  }
-
-  return result;
-}
-
 export async function sendXckFromBridgeWallet({
   network,
   address,
@@ -186,8 +134,37 @@ export async function sendXckFromBridgeWallet({
     throw new Error('Invalid or unsupported XCK payout amount');
   }
 
-  // Need to estimate the fee and add to the 
-  const feeInfo = await getXckFeeEstimate(network);
+  const response = await fetch(
+    `http://${config.daemonRpcHost}:${config.daemonRpcPort}/json_rpc`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: '0',
+        method: 'get_fee_estimate',
+        params: {
+          grace_blocks: 10
+        }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Daemon RPC returned HTTP ${response.status}: ${response.statusText}`
+    );
+  }
+
+  const json = await response.json();
+
+  if (json.error) {
+    throw new Error(json.error.message);
+  }
+
+  const feeInfo = json.result;
 
   if (!feeInfo || !Array.isArray(feeInfo.fees) || feeInfo.fees.length === 0) {
     throw new Error('Daemon did not return a valid XCK fee estimate');
@@ -204,7 +181,7 @@ export async function sendXckFromBridgeWallet({
   const assumedWeightBytes = 4500n;
   const estimatedNetworkFee = feePerByte * assumedWeightBytes;
 
-  if (amount >= estimatedNetworkFee) {
+  if (amount <= estimatedNetworkFee) {
     throw new Error('Bridge amount is too small to cover the XCK network fee');
   }
 
