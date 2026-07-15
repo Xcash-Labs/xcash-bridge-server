@@ -159,6 +159,16 @@ async function daemonRpc(network, method, params = {}) {
   return json.result;
 }
 
+async function getXckFeeEstimate(network) {
+  return daemonRpc(
+    network,
+    'get_fee_estimate',
+    {
+      grace_blocks: 10
+    }
+  );
+}
+
 export async function sendXckFromBridgeWallet({
   network,
   address,
