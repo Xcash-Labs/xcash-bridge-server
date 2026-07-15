@@ -178,7 +178,7 @@ export async function sendXckFromBridgeWallet({
   }
 
   // Conservative assumed weight for one private payout.
-  const assumedWeightBytes = 4500n;
+  const assumedWeightBytes = 2900n;
   const estimatedNetworkFee = feePerByte * assumedWeightBytes;
 
   if (amount <= estimatedNetworkFee) {
