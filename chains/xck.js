@@ -160,13 +160,19 @@ async function daemonRpc(network, method, params = {}) {
 }
 
 async function getXckFeeEstimate(network) {
-  return daemonRpc(
+  const result = await daemonRpc(
     network,
     'get_fee_estimate',
     {
       grace_blocks: 10
     }
   );
+
+  if (!result || !Array.isArray(result.fees) || result.fees.length === 0) {
+    throw new Error('Daemon did not return a valid XCK fee estimate');
+  }
+
+  return result;
 }
 
 export async function sendXckFromBridgeWallet({
